@@ -22,6 +22,7 @@ catkin_package(
     include
   LIBRARIES
     kuka_hardware_interface
+    kuka_cartesian_hardware_interface
   CATKIN_DEPENDS
     controller_manager
     hardware_interface
@@ -44,7 +45,7 @@ add_library(kuka_hardware_interface
   src/kuka_hardware_interface.cpp
 )
 
-target_link_libraries(kuka_hardware_interface
+target_link_libraries(kuka_hardware_interface kuka_cartesian_hardware_interface
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   ${TinyXML_LIBRARIES}

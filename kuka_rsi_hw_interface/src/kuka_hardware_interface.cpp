@@ -97,7 +97,7 @@ bool KukaHardwareInterface::read(const ros::Time time, const ros::Duration perio
   {
     return false;
   }
-
+  ROS_INFO("Received from robot:%s", in_buffer_.c_str());
   if (rt_rsi_pub_->trylock()){
     rt_rsi_pub_->msg_.data = in_buffer_;
     rt_rsi_pub_->unlockAndPublish();
@@ -123,6 +123,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
   }
 
   out_buffer_ = RSICommand(rsi_joint_position_corrections_, ipoc_).xml_doc;
+  ROS_INFO("Send to robot:%s", out_buffer_.c_str());
   server_->send(out_buffer_);
 
   return true;
