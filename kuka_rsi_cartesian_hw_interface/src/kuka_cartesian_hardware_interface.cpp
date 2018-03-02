@@ -145,11 +145,18 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
   {
 	//absolute
 	rsi_abs_cart_correction_[i]=rsi_abs_cart_correction_[i]+cartesian_pad_cmds_[i];
-    rsi_joint_position_corrections_[i] = rsi_abs_cart_correction_[i];
-    //relative
-   // rsi_joint_position_corrections_[i] = cartesian_pad_cmds_[i];
+	rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
   }
   
+  //in kuka [4] is yaw [5] is pitch [6] ir roll
+  rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+cartesian_pad_cmds_[5];
+  rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
+  
+  rsi_abs_cart_correction_[4]=rsi_abs_cart_correction_[4]+cartesian_pad_cmds_[4];
+  rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
+  
+  rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]+cartesian_pad_cmds_[3];
+  rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
 
   out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
   ROS_INFO("Send to robot:%s", out_buffer_.c_str());
