@@ -70,6 +70,7 @@
 #include <kuka_rsi_cartesian_hw_interface/rsi_command.h>
 
 #include <robotnik_trajectory_pad/CartesianEuler.h>
+#include <robotnik_msgs/set_odometry.h>
 
 namespace kuka_rsi_cartesian_hw_interface
 {
@@ -120,6 +121,11 @@ private:
   std::vector<double> cartesian_pad_cmds_;
   
   void padcallback(const robotnik_trajectory_pad::CartesianEuler::ConstPtr& c);
+  
+  ros::ServiceServer set_kuka_odometry_abs;
+  ros::ServiceServer set_kuka_odometry_rel;
+  ros::ServiceServer set_kuka_odometry_abs_fast;
+  ros::ServiceServer set_kuka_odometry_rel_fast;
 
 
   // Timing
@@ -129,6 +135,20 @@ private:
   ros::Time last_publish_time_;
   double publish_rate_;
   
+  //for the service
+  float aut_cmds_[4]; //correction of current position to the desired one
+  float aut_set_[3];
+  float pos_srv_[6];
+  bool service_set_kuka_abs;
+  bool service_set_kuka_rel;
+  float step_tr[4];
+  float velocity_trajectory_kuka;
+  float velocity_trajectory_kuka_rot;
+  float t_cyc;
+  float n_cyc_total;
+  int n_cyc;
+  float total_time;
+  float velocity_factor;
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
 
@@ -142,6 +162,12 @@ public:
   void configure();
   bool read(const ros::Time time, const ros::Duration period);
   bool write(const ros::Time time, const ros::Duration period);
+ // bool setKukaOdometry(float x_abs,float y_abs,float z_abs);
+  bool setKukaOdometry_abs(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
+  bool setKukaOdometry_rel(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
+  bool setKukaOdometry_abs_fast(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
+  bool setKukaOdometry_rel_fast(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
+
 
 };
 
