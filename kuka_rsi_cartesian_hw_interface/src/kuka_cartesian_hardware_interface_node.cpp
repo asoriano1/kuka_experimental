@@ -58,7 +58,7 @@ int main(int argc, char** argv)
   ros::Duration period;
   auto stopwatch_last = std::chrono::steady_clock::now();
   auto stopwatch_now = stopwatch_last;
-
+  
   //controller_manager::ControllerManager controller_manager(&kuka_rsi_hw_interface, nh);
 
   kuka_rsi_cartesian_hw_interface.start();
@@ -67,12 +67,14 @@ int main(int argc, char** argv)
   timestamp = ros::Time::now();
   stopwatch_now = std::chrono::steady_clock::now();
   period.fromSec(std::chrono::duration_cast<std::chrono::duration<double>>(stopwatch_now - stopwatch_last).count());
+  
   stopwatch_last = stopwatch_now;
 
   // Run as fast as possible
   while (ros::ok())
   //while (!g_quit)
   {
+	  
     // Receive current state from robot
     if (!kuka_rsi_cartesian_hw_interface.read(timestamp, period))
     {
@@ -91,6 +93,8 @@ int main(int argc, char** argv)
 
     // Send new setpoint to robot
     kuka_rsi_cartesian_hw_interface.write(timestamp, period);
+  
+   
   }
 
   spinner.stop();
