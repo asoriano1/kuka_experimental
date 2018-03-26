@@ -29,6 +29,7 @@ catkin_package(
     joint_limits_interface
     roscpp
     std_msgs
+    robotnik_msgs	
   DEPENDS
     TinyXML
 )
