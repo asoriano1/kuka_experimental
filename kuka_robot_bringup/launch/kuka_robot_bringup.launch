@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--TODO parametrize the versions of the tool reading from some global variable-->
+<launch>
+	
+  <arg name="finger_id" default="$(optenv FINGER_ID 3)"/>
+  <!-- Load robot description to parameter server -->
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find kuka_robot_bringup)/robot/kr120toolv$(arg finger_id).xacro'"/>
+  
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+	<param name="use_gui" value="true"/>
+  </node>
+	
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <!--rviz launch-->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find kuka_robot_bringup)/rviz/rviz.rviz" required="true" />
+  
+  
+</launch>

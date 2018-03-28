@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!--Generates a urdf from the macro in kr120r2500pro_macro.xacro -->
+<robot name="kuka_kr120r2500pro" xmlns:xacro="http://wiki.ros.org/xacro">
+    <xacro:include filename="$(find kuka_kr120_support)/urdf/kr120r2500pro_macro.xacro" />
+    <xacro:include filename="$(find kuka_tool_description)/urdf/gripper_6.urdf.xacro" />
+    <kuka_kr120r2500pro prefix=""/>
+    <gripper_6 parent="tool0" prefix="">
+		<origin xyz="0 0 0" rpy="0 0 0" />    
+	</gripper_6>
+    
+    <!--link name="world"/>
+	
+	<joint name="fixed" type="fixed">
+		<parent link="world"/>
+		<child link="base_link"/>
+	</joint>
+
+  <link name="base_link"/>
+      
+  <gripper_6 parent="base_link" prefix="">
+	<origin xyz="0 0 0" rpy="0 0 0" />    
+  </gripper_6-->
+  
+  <!--ros_control/-->
+    
+</robot>
