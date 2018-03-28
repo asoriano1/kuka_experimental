@@ -47,7 +47,7 @@
 // ROS
 #include <ros/ros.h>
 #include <std_msgs/String.h>
-
+#include <std_msgs/Bool.h>
 
 // ros_control
 #include <realtime_tools/realtime_publisher.h>
@@ -127,7 +127,13 @@ private:
   ros::ServiceServer set_kuka_odometry_abs_fast;
   ros::ServiceServer set_kuka_odometry_rel_fast;
 
-
+  //Publishers of robot state
+  ros::Publisher cart_pos_pub;
+  ros::Publisher kuka_moving_pub;
+  sensor_msgs::JointState cart_pos;
+  std_msgs::Bool msgs_kuka_moving;
+  
+  
   // Timing
   ros::Duration control_period_;
   ros::Duration elapsed_time_;
@@ -149,6 +155,7 @@ private:
   int n_cyc;
   float total_time;
   float velocity_factor;
+ 
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
 
