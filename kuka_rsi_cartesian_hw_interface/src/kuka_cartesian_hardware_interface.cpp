@@ -79,7 +79,7 @@ KukaHardwareInterface::KukaHardwareInterface() :
   
   
   //subscriber
-  pad_subs = nh_.subscribe<robotnik_trajectory_pad::CartesianEuler>("cartesian_move", 1, &KukaHardwareInterface::padcallback, this);
+  pad_subs = nh_.subscribe<robotnik_trajectory_pad::CartesianEuler>("/kuka_pad/cartesian_move", 1, &KukaHardwareInterface::padcallback, this);
   //service
   set_kuka_odometry_abs=nh_.advertiseService("setKukaAbs",&KukaHardwareInterface::setKukaOdometry_abs,this);
   set_kuka_odometry_rel=nh_.advertiseService("setKukaRel",&KukaHardwareInterface::setKukaOdometry_rel,this);
