@@ -2,4 +2,5 @@
 <launch>
   <!-- Load robot description to parameter server -->
   <param name="robot_description" command="$(find xacro)/xacro.py '$(find kuka_kr120_support)/urdf/kr120r2500pro.xacro'"/>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
 </launch>
