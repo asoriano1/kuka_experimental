@@ -70,7 +70,8 @@
 #include <kuka_rsi_cartesian_hw_interface/rsi_command.h>
 
 #include <robotnik_trajectory_pad/CartesianEuler.h>
-#include <robotnik_msgs/set_odometry.h>
+#include <robotnik_msgs/set_kuka_pose.h>
+#include <robotnik_msgs/Kuka_pose.h>
 
 namespace kuka_rsi_cartesian_hw_interface
 {
@@ -130,7 +131,7 @@ private:
   //Publishers of robot state
   ros::Publisher cart_pos_pub;
   ros::Publisher kuka_moving_pub;
-  sensor_msgs::JointState cart_pos;
+  robotnik_msgs::Kuka_pose cart_pos;
   std_msgs::Bool msgs_kuka_moving;
   
   
@@ -142,12 +143,12 @@ private:
   double publish_rate_;
   
   //for the service
-  float aut_cmds_[4]; //correction of current position to the desired one
+  float aut_cmds_[6]; //correction of current position to the desired one
   float aut_set_[3];
   float pos_srv_[6];
   bool service_set_kuka_abs;
   bool service_set_kuka_rel;
-  float step_tr[4];
+  float step_tr[6];
   float velocity_trajectory_kuka;
   float velocity_trajectory_kuka_rot;
   float t_cyc;
@@ -169,11 +170,11 @@ public:
   void configure();
   bool read(const ros::Time time, const ros::Duration period);
   bool write(const ros::Time time, const ros::Duration period);
- // bool setKukaOdometry(float x_abs,float y_abs,float z_abs);
-  bool setKukaOdometry_abs(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
-  bool setKukaOdometry_rel(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
-  bool setKukaOdometry_abs_fast(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
-  bool setKukaOdometry_rel_fast(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response);
+ 
+  bool setKukaOdometry_abs(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response);
+  bool setKukaOdometry_rel(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response);
+  bool setKukaOdometry_abs_fast(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response);
+  bool setKukaOdometry_rel_fast(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response);
 
 
 };

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   robotnik_trajectory_pad
+  
 )
 
 find_package(Boost REQUIRED COMPONENTS system)
