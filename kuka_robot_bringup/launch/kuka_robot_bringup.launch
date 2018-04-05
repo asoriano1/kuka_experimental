@@ -62,7 +62,7 @@
   </group>
   
   <!--rviz launch-->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find kuka_robot_bringup)/rviz/rviz.rviz" required="true" />
+  <!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find kuka_robot_bringup)/rviz/rviz.rviz" required="true" /-->
   
   <!--rqt gui -->
   <!--node name="robotnik_gui" pkg="rqt_kuka" type="rqt_kuka"/-->
