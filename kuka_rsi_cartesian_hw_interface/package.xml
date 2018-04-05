@@ -19,6 +19,8 @@
   <build_depend>robotnik_trajectory_pad</build_depend>
   <build_depend>robotnik_msgs</build_depend>
   <exec_depend>robotnik_msgs</exec_depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend> 
  
   <depend>controller_manager</depend>
   <depend>hardware_interface</depend>
