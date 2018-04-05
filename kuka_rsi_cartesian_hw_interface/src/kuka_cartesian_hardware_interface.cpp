@@ -73,7 +73,7 @@ KukaHardwareInterface::KukaHardwareInterface() :
   // realtime publisher
   realtime_pub_.reset(new realtime_tools::RealtimePublisher<sensor_msgs::JointState>(nh_, "joint_states", 4));
   //publishes the cartesian position of the robot
-  cart_pos_pub=nh_.advertise<sensor_msgs::JointState>("cartesian_pos_kuka",10);
+  cart_pos_pub=nh_.advertise<robotnik_msgs::Kuka_pose>("cartesian_pos_kuka",10);
   //publishes if the robot is moving through service 
   kuka_moving_pub=nh_.advertise<std_msgs::Bool>("kuka_moving",10);
   
@@ -112,7 +112,7 @@ bool KukaHardwareInterface::read(const ros::Time time, const ros::Duration perio
   {
     return false;
   }
-  ROS_INFO("Received from robot:%s", in_buffer_.c_str());
+ // ROS_INFO("Received from robot:%s", in_buffer_.c_str());
   if (rt_rsi_pub_->trylock()){
     rt_rsi_pub_->msg_.data = in_buffer_;
     rt_rsi_pub_->unlockAndPublish();
@@ -126,17 +126,25 @@ bool KukaHardwareInterface::read(const ros::Time time, const ros::Duration perio
 		// we're actually publishing, so increment time
 		last_publish_time_ = last_publish_time_ + ros::Duration(1.0/publish_rate_);
 		realtime_pub_->msg_.header.stamp = time;
-		
+		//ROS_INFO("READ time: %f", (-last_publish_time_.toSec()+time.toSec()));
 		//update and publish by /joint_states
 		for (std::size_t i = 0; i < n_dof_; ++i)		
 		{
 			realtime_pub_->msg_.position[i] = DEG2RAD * rsi_state_.positions[i];
-			cart_pos.position[i]=rsi_state_.cart_position[i];				
+							
 			realtime_pub_->msg_.velocity[i] = 0;
-			cart_pos.velocity[i]=0;
+			
 			realtime_pub_->msg_.effort[i] = 0;
-			cart_pos.effort[i]=0;
+			
 		}
+		//Absolute cartesian pos of the robot
+		cart_pos.x=rsi_state_.cart_position[0];
+		cart_pos.y=rsi_state_.cart_position[1];
+		cart_pos.z=rsi_state_.cart_position[2];
+		cart_pos.A=rsi_state_.cart_position[3];
+		cart_pos.B=rsi_state_.cart_position[4];
+		cart_pos.C=rsi_state_.cart_position[5];
+		
 		realtime_pub_->unlockAndPublish();
 		cart_pos_pub.publish(cart_pos);
 	}
@@ -157,7 +165,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
     rsi_joint_position_corrections_[i] = (RAD2DEG * joint_position_command_[i]) - rsi_initial_joint_positions_[i];
   }*/
 
-	ROS_INFO("In Write");
+	//ROS_INFO("In Write");
 if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 	   //write part
 	  msgs_kuka_moving.data=true;
@@ -166,24 +174,24 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 	  if(n_cyc<=n_cyc_total*0.25 ){
 		//slope=0.75;
 			slope=(n_cyc/(0.25*n_cyc_total))*1.333; 
-			ROS_INFO("In slow part Start");
+			//ROS_INFO("In slow part Start");
 		}else if(n_cyc>=0.75*n_cyc_total){
 		//slope=0.75;
 			slope=((n_cyc_total-n_cyc)/(0.25*n_cyc_total))*1.333; 
-			ROS_INFO("In slow part END");
+			//ROS_INFO("In slow part END");
 		}else{	
 			slope=1.333;
-			ROS_INFO("In fast part");
+			//ROS_INFO("In fast part");
 		}
-	  ROS_INFO("n_cyc=%d, step x=%f y=%f z=%f angle=%f slope=%f ",n_cyc,step_tr[0],step_tr[1],step_tr[2],aut_cmds_[3],slope);
-	 for (std::size_t i = 0; i < n_dof_-3; ++i)
+	  
+	 for (std::size_t i = 0; i < n_dof_; ++i)
   {
 		
 		rsi_abs_cart_correction_[i]=rsi_abs_cart_correction_[i]+step_tr[i]*slope; 
 		rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
 		
   }
- 
+ /*
 	rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+step_tr[3]*slope;
 	rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
   
@@ -192,7 +200,7 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
   
 	rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]; 
 	rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
-	
+*/
 	if(n_cyc>=n_cyc_total-1){
 		service_set_kuka_abs=false;
 		service_set_kuka_rel=false;
@@ -202,7 +210,7 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 
 	
 }else if(!service_set_kuka_abs && !service_set_kuka_rel){
-	ROS_INFO(" NOT In Service");
+	//ROS_INFO(" NOT In Service");
 	
 		for (std::size_t i = 0; i < n_dof_-3; ++i)
 		{
@@ -224,7 +232,7 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 	}
 
   out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
-  ROS_INFO("Send to robot:%s", out_buffer_.c_str());
+ // ROS_INFO("Send to robot:%s", out_buffer_.c_str());
   kuka_moving_pub.publish(msgs_kuka_moving);
   server_->send(out_buffer_);
 
@@ -233,39 +241,36 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 
 
 //service for abs coord
-bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response){	
-	service_set_kuka_abs=true;
-	/*
+bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
 
-	aut_set_[0]=request.x;
-	aut_set_[1]=request.y;
-	aut_set_[2]=request.z;
-	  */
+	
 	n_cyc=0;
 	
 	
 	aut_cmds_[0]=request.x-rsi_state_.cart_position[0];
 	aut_cmds_[1]=request.y-rsi_state_.cart_position[1];
 	aut_cmds_[2]=request.z-rsi_state_.cart_position[2]; 
-	aut_cmds_[3]=request.orientation-rsi_state_.cart_position[3]; 
+	aut_cmds_[3]=request.A-rsi_state_.cart_position[3];
+	aut_cmds_[4]=request.B-rsi_state_.cart_position[4];
+	aut_cmds_[5]=request.C-rsi_state_.cart_position[5]; 
 	  
 	float total_time_tras=sqrt(pow(aut_cmds_[0],2)+pow(aut_cmds_[1],2)+pow(aut_cmds_[2],2))/velocity_trajectory_kuka;
-	float total_time_rot=sqrt(pow(aut_cmds_[3],2))/velocity_trajectory_kuka_rot;
+	float total_time_rot=sqrt(pow(aut_cmds_[3],2)+pow(aut_cmds_[4],2)+pow(aut_cmds_[5],2))/velocity_trajectory_kuka_rot;
 	
 	total_time=fmax(total_time_tras,total_time_rot);
 	n_cyc_total=total_time/t_cyc;
 	
-	 for (std::size_t i = 0; i < n_dof_-2; ++i)
+	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
 	step_tr[i]=aut_cmds_[i]/n_cyc_total;
 	}
-	
+  service_set_kuka_abs=true;
   response.ret=true;
   return true;
 }
 //service for abs coord
-bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response){	
-	service_set_kuka_abs=true;
+bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+	
 	/*
 
 	aut_set_[0]=request.x;
@@ -278,79 +283,82 @@ bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_odometry
 	aut_cmds_[0]=request.x-rsi_state_.cart_position[0];
 	aut_cmds_[1]=request.y-rsi_state_.cart_position[1];
 	aut_cmds_[2]=request.z-rsi_state_.cart_position[2]; 
-	aut_cmds_[3]=request.orientation-rsi_state_.cart_position[3]; 
+	aut_cmds_[3]=request.A-rsi_state_.cart_position[3];
+	aut_cmds_[4]=request.B-rsi_state_.cart_position[4];
+	aut_cmds_[5]=request.C-rsi_state_.cart_position[5];  
 	  
 	float total_time_tras=sqrt(pow(aut_cmds_[0],2)+pow(aut_cmds_[1],2)+pow(aut_cmds_[2],2))/velocity_trajectory_kuka;
-	float total_time_rot=sqrt(pow(aut_cmds_[3],2))/velocity_trajectory_kuka_rot;
+	float total_time_rot=sqrt(pow(aut_cmds_[3],2)+pow(aut_cmds_[4],2)+pow(aut_cmds_[5],2))/velocity_trajectory_kuka_rot;
 	
 	total_time=fmax(total_time_tras,total_time_rot)/velocity_factor;
 	n_cyc_total=total_time/t_cyc;
 	
-	 for (std::size_t i = 0; i < n_dof_-2; ++i)
+	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
 	step_tr[i]=aut_cmds_[i]/n_cyc_total;
 	}
-	
+	service_set_kuka_abs=true;
   response.ret=true;
   return true;
 }
 
 //service for rel coord
-bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response){	
-	service_set_kuka_rel=true;
+bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+	
 	n_cyc=0;
 
 	aut_cmds_[0]=request.x;
 	aut_cmds_[1]=request.y;
 	aut_cmds_[2]=request.z;
-	aut_cmds_[3]=request.orientation;
+	aut_cmds_[3]=request.A;
+	aut_cmds_[4]=request.B;
+	aut_cmds_[5]=request.C;
 	/*
 	for (std::size_t i = 0; i < n_dof_-3; ++i){
 	pos_srv_[i]=rsi_state_.cart_position[i];
 	}
 	*/
 	float total_time_tras=sqrt(pow(aut_cmds_[0],2)+pow(aut_cmds_[1],2)+pow(aut_cmds_[2],2))/velocity_trajectory_kuka;
-	float total_time_rot=sqrt(pow(aut_cmds_[3],2))/velocity_trajectory_kuka_rot;
+	float total_time_rot=sqrt(pow(aut_cmds_[3],2)+pow(aut_cmds_[4],2)+pow(aut_cmds_[5],2))/velocity_trajectory_kuka_rot;
 	
 	total_time=fmax(total_time_tras,total_time_rot);
 	
 	n_cyc_total=total_time/t_cyc;
 	
-	 for (std::size_t i = 0; i < n_dof_-2; ++i)
+	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
 	step_tr[i]=aut_cmds_[i]/n_cyc_total;
 	}
-	
+	service_set_kuka_rel=true;
   response.ret=true;
   return true;
 }
 
 //service for rel coord
-bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_odometry::Request &request, robotnik_msgs::set_odometry::Response &response){	
-	service_set_kuka_rel=true;
+bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+	
 	n_cyc=0;
 
 	aut_cmds_[0]=request.x;
 	aut_cmds_[1]=request.y;
 	aut_cmds_[2]=request.z;
-	aut_cmds_[3]=request.orientation;
-	/*
-	for (std::size_t i = 0; i < n_dof_-3; ++i){
-	pos_srv_[i]=rsi_state_.cart_position[i];
-	}
-	*/
+	aut_cmds_[3]=request.A;
+	aut_cmds_[4]=request.B;
+	aut_cmds_[5]=request.C;
+	
+	
 	float total_time_tras=sqrt(pow(aut_cmds_[0],2)+pow(aut_cmds_[1],2)+pow(aut_cmds_[2],2))/velocity_trajectory_kuka;
-	float total_time_rot=sqrt(pow(aut_cmds_[3],2))/velocity_trajectory_kuka_rot;
+	float total_time_rot=sqrt(pow(aut_cmds_[3],2)+pow(aut_cmds_[4],2)+pow(aut_cmds_[5],2))/velocity_trajectory_kuka_rot;
 	
 	total_time=fmax(total_time_tras,total_time_rot)/velocity_factor;
 	
 	n_cyc_total=total_time/t_cyc;
 	
-	 for (std::size_t i = 0; i < n_dof_-2; ++i)
+	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
 	step_tr[i]=aut_cmds_[i]/n_cyc_total;
 	}
-	
+	service_set_kuka_rel=true;
   response.ret=true;
   return true;
 }
@@ -364,10 +372,10 @@ void KukaHardwareInterface::start()
 	msgs_kuka_moving.data=false;
 	
 	
-	velocity_trajectory_kuka=10; // mm/s 40 example
-	velocity_trajectory_kuka_rot=0.5;//grad/s
+	velocity_trajectory_kuka=5; // mm/s 10 example (30 for 12ms)
+	velocity_trajectory_kuka_rot=1.5;//grad/s
     t_cyc=0.02; // sec
-	velocity_factor=3;
+	velocity_factor=2.5;
   // Wait for connection from robot
   server_.reset(new UDPServer(local_host_, local_port_));
 
@@ -404,10 +412,7 @@ void KukaHardwareInterface::start()
 		  realtime_pub_->msg_.velocity.push_back(0.0);
 		  realtime_pub_->msg_.effort.push_back(0.0);
 		  
-		  cart_pos.name.push_back(joint_names_[i]);
-		  cart_pos.position.push_back(0.0);
-		  cart_pos.velocity.push_back(0.0);
-		  cart_pos.effort.push_back(0.0);
+		  
 		  
   }
 
