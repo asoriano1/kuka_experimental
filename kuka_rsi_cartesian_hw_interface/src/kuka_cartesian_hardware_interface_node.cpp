@@ -39,6 +39,8 @@
 
 #include <kuka_rsi_cartesian_hw_interface/kuka_cartesian_hardware_interface.h>
 
+#include <sys/time.h>
+
 int main(int argc, char** argv)
 {
   ROS_INFO_STREAM_NAMED("hardware_interface", "Starting hardware interface...");
@@ -58,7 +60,7 @@ int main(int argc, char** argv)
   ros::Duration period;
   auto stopwatch_last = std::chrono::steady_clock::now();
   auto stopwatch_now = stopwatch_last;
-  
+  //struct timespec  tvalBefore1, tvalAfter1, tvalMid, tvalMid2;
   //controller_manager::ControllerManager controller_manager(&kuka_rsi_hw_interface, nh);
 
   kuka_rsi_cartesian_hw_interface.start();
@@ -70,11 +72,12 @@ int main(int argc, char** argv)
   
   stopwatch_last = stopwatch_now;
 
+  
   // Run as fast as possible
   while (ros::ok())
   //while (!g_quit)
   {
-	  
+	  clock_gettime(CLOCK_REALTIME,&tvalMid2);
     // Receive current state from robot
     if (!kuka_rsi_cartesian_hw_interface.read(timestamp, period))
     {
@@ -90,11 +93,23 @@ int main(int argc, char** argv)
 
     // Update the controllers
     //controller_manager.update(timestamp, period);
-
+	//clock_gettime(CLOCK_REALTIME,&tvalMid);
+	//int microseconds_interval2=((tvalMid.tv_sec - tvalMid2.tv_sec)*1000000000L
+      //     +tvalMid.tv_nsec) - tvalMid2.tv_nsec;
+        //   if(microseconds_interval2/1000>4000)
+			//	ROS_INFO("time  read  microseconds %d",microseconds_interval2/1000);
+    
     // Send new setpoint to robot
     kuka_rsi_cartesian_hw_interface.write(timestamp, period);
-  
-   
+	//clock_gettime(CLOCK_REALTIME,&tvalAfter1);
+	//int microseconds_interval=((tvalAfter1.tv_sec - tvalBefore1.tv_sec)*1000000000L
+     //      +tvalAfter1.tv_nsec) - tvalBefore1.tv_nsec;
+    // if(microseconds_interval2/1000>4000){
+				//ROS_INFO("time interval read+write microseconds %d",microseconds_interval/1000);
+				//ROS_INFO("time  write microseconds %d",(microseconds_interval-microseconds_interval2)/1000);
+		//	}
+    // clock_gettime(CLOCK_REALTIME,&tvalBefore1);
+	
   }
 
   spinner.stop();

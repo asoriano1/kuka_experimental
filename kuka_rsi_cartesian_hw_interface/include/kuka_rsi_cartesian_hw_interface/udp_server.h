@@ -56,7 +56,9 @@
 #include <arpa/inet.h>
 
 #define BUFSIZE 1024
-struct timeval tvalBefore, tvalAfter;
+	
+
+
 class UDPServer
 {
 public:
@@ -102,13 +104,9 @@ public:
 
   ssize_t send(std::string& buffer)
   {
-	gettimeofday(&tvalAfter,NULL);
-	int microseconds_interval=((tvalAfter.tv_sec - tvalBefore.tv_sec)*1000000L
-           +tvalAfter.tv_usec) - tvalBefore.tv_usec;
-    gettimeofday(&tvalBefore,NULL);
-    if(microseconds_interval>=5000){
-    ROS_INFO("time interval SEND microseconds %d",microseconds_interval);
-}
+
+  
+    
     
     ssize_t bytes = 0;
     bytes = sendto(sockfd_, buffer.c_str(), buffer.size(), 0, (struct sockaddr *) &clientaddr_, clientlen_);

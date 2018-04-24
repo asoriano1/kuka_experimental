@@ -73,7 +73,7 @@ KukaHardwareInterface::KukaHardwareInterface() :
   // realtime publisher
   realtime_pub_.reset(new realtime_tools::RealtimePublisher<sensor_msgs::JointState>(nh_, "joint_states", 4));
   //publishes the cartesian position of the robot
-  cart_pos_pub=nh_.advertise<robotnik_msgs::Kuka_pose>("cartesian_pos_kuka",10);
+  cart_pos_pub=nh_.advertise<robotnik_msgs::Cartesian_Euler_pose>("cartesian_pos_kuka",10);
   //publishes if the robot is moving through service 
   kuka_moving_pub=nh_.advertise<std_msgs::Bool>("kuka_moving",10);
   
@@ -166,13 +166,13 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
   }*/
 
 	//ROS_INFO("In Write");
-if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
-	   //write part
-	  msgs_kuka_moving.data=true;
-	  n_cyc++;
-	  float slope=1;
-	  if(n_cyc<=n_cyc_total*0.25 ){
-		//slope=0.75;
+	if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
+		//write part
+		msgs_kuka_moving.data=true;
+		n_cyc++;
+		float slope=1;
+		if(n_cyc<=n_cyc_total*0.25 ){
+			//slope=0.75;
 			slope=(n_cyc/(0.25*n_cyc_total))*1.333; 
 			//ROS_INFO("In slow part Start");
 		}else if(n_cyc>=0.75*n_cyc_total){
@@ -184,13 +184,13 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 			//ROS_INFO("In fast part");
 		}
 	  
-	 for (std::size_t i = 0; i < n_dof_; ++i)
-  {
+		for (std::size_t i = 0; i < n_dof_; ++i)
+		{
 		
-		rsi_abs_cart_correction_[i]=rsi_abs_cart_correction_[i]+step_tr[i]*slope; 
-		rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
+			rsi_abs_cart_correction_[i]=rsi_abs_cart_correction_[i]+step_tr[i]*slope; 
+			rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
 		
-  }
+		}
  /*
 	rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+step_tr[3]*slope;
 	rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
@@ -201,47 +201,48 @@ if((service_set_kuka_abs || service_set_kuka_rel) && n_cyc<=n_cyc_total){
 	rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]; 
 	rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
 */
-	if(n_cyc>=n_cyc_total-1){
-		service_set_kuka_abs=false;
-		service_set_kuka_rel=false;
-		msgs_kuka_moving.data=false;
+		if(n_cyc>=n_cyc_total-1){
+			service_set_kuka_abs=false;
+			service_set_kuka_rel=false;
+			msgs_kuka_moving.data=false;
 		}
 	
 
 	
-}else if(!service_set_kuka_abs && !service_set_kuka_rel){
-	//ROS_INFO(" NOT In Service");
+	}else if(!service_set_kuka_abs && !service_set_kuka_rel){
+		//ROS_INFO(" NOT In Service");
 	
 		for (std::size_t i = 0; i < n_dof_-3; ++i)
 		{
-		//absolute
-		rsi_abs_cart_correction_[i]=rsi_abs_cart_correction_[i]+cartesian_pad_cmds_[i];
-		rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
+			//absolute
+			rsi_abs_cart_correction_[i]=rsi_abs_cart_correction_[i]+cartesian_pad_cmds_[i];
+			rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
 		}
   
-	//in kuka [4] is yaw [5] is pitch [6] ir roll
-  rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+cartesian_pad_cmds_[5];
-  rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
-  
-  rsi_abs_cart_correction_[4]=rsi_abs_cart_correction_[4]+cartesian_pad_cmds_[4];
-  rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
-  
-  rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]+cartesian_pad_cmds_[3];
-  rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
+		//in kuka [4] is yaw [5] is pitch [6] ir roll
+		rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+cartesian_pad_cmds_[5];
+		rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
+	
+		rsi_abs_cart_correction_[4]=rsi_abs_cart_correction_[4]+cartesian_pad_cmds_[4];
+		rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
+	
+		rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]+cartesian_pad_cmds_[3];
+		rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
 	
 	}
 
   out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
  // ROS_INFO("Send to robot:%s", out_buffer_.c_str());
-  kuka_moving_pub.publish(msgs_kuka_moving);
-  server_->send(out_buffer_);
 
+  server_->send(out_buffer_);
+  kuka_moving_pub.publish(msgs_kuka_moving);
+  
   return true;
 }
 
 
 //service for abs coord
-bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 
 	
 	n_cyc=0;
@@ -249,10 +250,16 @@ bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_kuka_pose::Re
 	
 	aut_cmds_[0]=request.x-rsi_state_.cart_position[0];
 	aut_cmds_[1]=request.y-rsi_state_.cart_position[1];
-	aut_cmds_[2]=request.z-rsi_state_.cart_position[2]; 
+	aut_cmds_[2]=request.z-rsi_state_.cart_position[2];
 	aut_cmds_[3]=request.A-rsi_state_.cart_position[3];
 	aut_cmds_[4]=request.B-rsi_state_.cart_position[4];
-	aut_cmds_[5]=request.C-rsi_state_.cart_position[5]; 
+	if(request.A>0 && rsi_state_.cart_position[5]<0){
+		aut_cmds_[5]=-360+request.C-rsi_state_.cart_position[5];
+	}else if(request.A<0 && rsi_state_.cart_position[5]>0){
+		aut_cmds_[5]=360+request.C-rsi_state_.cart_position[5];
+	}else{
+	aut_cmds_[5]=request.C-rsi_state_.cart_position[5];
+	}  //Because in kuka C angle goes from -179 to 179
 	  
 	float total_time_tras=sqrt(pow(aut_cmds_[0],2)+pow(aut_cmds_[1],2)+pow(aut_cmds_[2],2))/velocity_trajectory_kuka;
 	float total_time_rot=sqrt(pow(aut_cmds_[3],2)+pow(aut_cmds_[4],2)+pow(aut_cmds_[5],2))/velocity_trajectory_kuka_rot;
@@ -262,21 +269,20 @@ bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_kuka_pose::Re
 	
 	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
-	step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		if(n_cyc_total>=10){//por si la posicion comandada es la misma en la que está que no divida por cero
+			step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		}else{
+			step_tr[i]=0;
+		}
 	}
   service_set_kuka_abs=true;
   response.ret=true;
   return true;
 }
 //service for abs coord
-bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 	
-	/*
 
-	aut_set_[0]=request.x;
-	aut_set_[1]=request.y;
-	aut_set_[2]=request.z;
-	  */
 	n_cyc=0;
 	
 	
@@ -285,7 +291,13 @@ bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_kuka_pos
 	aut_cmds_[2]=request.z-rsi_state_.cart_position[2]; 
 	aut_cmds_[3]=request.A-rsi_state_.cart_position[3];
 	aut_cmds_[4]=request.B-rsi_state_.cart_position[4];
-	aut_cmds_[5]=request.C-rsi_state_.cart_position[5];  
+	if(request.A>0 && rsi_state_.cart_position[5]<0){
+		aut_cmds_[5]=-360+request.C-rsi_state_.cart_position[5];
+	}else if(request.A<0 && rsi_state_.cart_position[5]>0){
+		aut_cmds_[5]=360+request.C-rsi_state_.cart_position[5];
+	}else{
+	aut_cmds_[5]=request.C-rsi_state_.cart_position[5];
+	}  //Because in kuka  C angle goes from -179 to 179
 	  
 	float total_time_tras=sqrt(pow(aut_cmds_[0],2)+pow(aut_cmds_[1],2)+pow(aut_cmds_[2],2))/velocity_trajectory_kuka;
 	float total_time_rot=sqrt(pow(aut_cmds_[3],2)+pow(aut_cmds_[4],2)+pow(aut_cmds_[5],2))/velocity_trajectory_kuka_rot;
@@ -295,7 +307,11 @@ bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_kuka_pos
 	
 	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
-	step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		if(n_cyc_total>=10){//por si la posicion comandada es la misma en la que está que no divida por cero
+			step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		}else{
+			step_tr[i]=0;
+		}
 	}
 	service_set_kuka_abs=true;
   response.ret=true;
@@ -303,7 +319,7 @@ bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_kuka_pos
 }
 
 //service for rel coord
-bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 	
 	n_cyc=0;
 
@@ -327,7 +343,11 @@ bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_kuka_pose::Re
 	
 	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
-	step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		if(n_cyc_total>=10){ //por si la posicion comandada es la misma en la que está que no divida por cero
+			step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		}else{
+			step_tr[i]=0;
+		}
 	}
 	service_set_kuka_rel=true;
   response.ret=true;
@@ -335,7 +355,7 @@ bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_kuka_pose::Re
 }
 
 //service for rel coord
-bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_kuka_pose::Request &request, robotnik_msgs::set_kuka_pose::Response &response){	
+bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 	
 	n_cyc=0;
 
@@ -356,11 +376,15 @@ bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_kuka_pos
 	
 	 for (std::size_t i = 0; i < n_dof_; ++i)
 	{
-	step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		if(n_cyc_total>=10){//por si la posicion comandada es la misma en la que está que no divida por cero
+			step_tr[i]=aut_cmds_[i]/n_cyc_total;
+		}else{
+			step_tr[i]=0;
+		}
 	}
 	service_set_kuka_rel=true;
-  response.ret=true;
-  return true;
+	response.ret=true;
+	return true;
 }
 
 
@@ -372,7 +396,7 @@ void KukaHardwareInterface::start()
 	msgs_kuka_moving.data=false;
 	
 	
-	velocity_trajectory_kuka=5; // mm/s 10 example (30 for 12ms)
+	velocity_trajectory_kuka=10; // mm/s 10 example (30 for 12ms) last 5
 	velocity_trajectory_kuka_rot=1.5;//grad/s
     t_cyc=0.02; // sec
 	velocity_factor=2.5;
