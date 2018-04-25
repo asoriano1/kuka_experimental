@@ -77,7 +77,7 @@ int main(int argc, char** argv)
   while (ros::ok())
   //while (!g_quit)
   {
-	  clock_gettime(CLOCK_REALTIME,&tvalMid2);
+	  //clock_gettime(CLOCK_REALTIME,&tvalMid2);
     // Receive current state from robot
     if (!kuka_rsi_cartesian_hw_interface.read(timestamp, period))
     {
