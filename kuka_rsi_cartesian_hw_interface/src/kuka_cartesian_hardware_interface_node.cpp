@@ -93,22 +93,23 @@ int main(int argc, char** argv)
 
     // Update the controllers
     //controller_manager.update(timestamp, period);
-	//clock_gettime(CLOCK_REALTIME,&tvalMid);
-	//int microseconds_interval2=((tvalMid.tv_sec - tvalMid2.tv_sec)*1000000000L
-      //     +tvalMid.tv_nsec) - tvalMid2.tv_nsec;
-        //   if(microseconds_interval2/1000>4000)
-			//	ROS_INFO("time  read  microseconds %d",microseconds_interval2/1000);
-    
+	/*clock_gettime(CLOCK_REALTIME,&tvalMid);
+	int microseconds_interval2=((tvalMid.tv_sec - tvalMid2.tv_sec)*1000000000L
+          +tvalMid.tv_nsec) - tvalMid2.tv_nsec;
+           if(microseconds_interval2/1000>4500)
+				//ROS_INFO("time  read  microseconds %d",microseconds_interval2/1000);
+    */
     // Send new setpoint to robot
     kuka_rsi_cartesian_hw_interface.write(timestamp, period);
-	//clock_gettime(CLOCK_REALTIME,&tvalAfter1);
-	//int microseconds_interval=((tvalAfter1.tv_sec - tvalBefore1.tv_sec)*1000000000L
-     //      +tvalAfter1.tv_nsec) - tvalBefore1.tv_nsec;
-    // if(microseconds_interval2/1000>4000){
+	/*clock_gettime(CLOCK_REALTIME,&tvalAfter1);
+	int microseconds_interval=((tvalAfter1.tv_sec - tvalBefore1.tv_sec)*1000000000L
+           +tvalAfter1.tv_nsec) - tvalBefore1.tv_nsec;
+     if(microseconds_interval2/1000>4500){
 				//ROS_INFO("time interval read+write microseconds %d",microseconds_interval/1000);
 				//ROS_INFO("time  write microseconds %d",(microseconds_interval-microseconds_interval2)/1000);
-		//	}
-    // clock_gettime(CLOCK_REALTIME,&tvalBefore1);
+			}
+     clock_gettime(CLOCK_REALTIME,&tvalBefore1);
+    */
 	
   }
 
