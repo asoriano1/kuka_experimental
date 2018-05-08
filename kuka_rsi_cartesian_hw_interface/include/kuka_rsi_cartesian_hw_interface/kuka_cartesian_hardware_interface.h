@@ -143,19 +143,29 @@ private:
   double publish_rate_;
   
   //for the service
-  float aut_cmds_[6]; //correction of current position to the desired one
-  float aut_set_[3];
-  float pos_srv_[6];
+  float aut_cmds_[6]; //desired position
+  float pose_init_[6];
   bool service_set_kuka_abs;
   bool service_set_kuka_rel;
   float step_tr[6];
+  float moving_[6];
   float velocity_trajectory_kuka;
-  float velocity_trajectory_kuka_rot;
   float t_cyc;
-  float n_cyc_total;
-  int n_cyc;
+  int counter_not_moving;
   float total_time;
   float velocity_factor;
+  float prev_distance_to_end;
+  float prev_angle_A_error;
+  float prev_angle_B_error;
+  float prev_angle_C_error;
+  float breaking_distance;
+  float slope;
+  float distance_from_start;
+  float distance_to_end;
+  float angle_A_error;
+  float angle_B_error;
+  float angle_C_error;
+  float rot_A;
  
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
