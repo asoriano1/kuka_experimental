@@ -163,9 +163,13 @@ private:
   float distance_from_start;
   float distance_to_end;
   float angle_A_error;
+  float angle_A_moved_from_start;
   float angle_B_error;
+  float angle_B_moved_from_start;
   float angle_C_error;
+  float angle_C_moved_from_start;
   float rot_A;
+  bool first_time;
  
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
