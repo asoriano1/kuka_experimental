@@ -120,7 +120,7 @@ bool KukaHardwareInterface::read(const ros::Time time, const ros::Duration perio
 		{
 		return false;
 	}
-	// ROS_INFO("Received from robot:%s", in_buffer_.c_str());
+	//ROS_INFO("Received from robot:%s", in_buffer_.c_str());
 	if (rt_rsi_pub_->trylock()){
 		rt_rsi_pub_->msg_.data = in_buffer_;
 		rt_rsi_pub_->unlockAndPublish();
@@ -152,7 +152,9 @@ bool KukaHardwareInterface::read(const ros::Time time, const ros::Duration perio
 		cart_pos.A=rsi_state_.cart_position[3];
 		cart_pos.B=rsi_state_.cart_position[4];
 		cart_pos.C=rsi_state_.cart_position[5];
-
+			
+		
+		
 		realtime_pub_->unlockAndPublish();
 		cart_pos_pub.publish(cart_pos);
 		}
@@ -187,19 +189,26 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			pow((-rsi_state_.cart_position[0]+aut_cmds_[0]),2)+
 			pow((-rsi_state_.cart_position[1]+aut_cmds_[1]),2)+
 			pow((-rsi_state_.cart_position[2]+aut_cmds_[2]),2));
-		ROS_INFO(" In Service distance from start:%f distance to end: %f",distance_from_start,distance_to_end);
+		//ROS_INFO(" In Service distance from start:%f distance to end: %f",distance_from_start,distance_to_end);
 		
 		angle_A_error=-rsi_state_.cart_position[3] + aut_cmds_[3];
-		angle_A_moved_from_start=sqrt(
-			pow((rsi_state_.cart_position[3]-pose_init_[3]),2));
+		if(range_A6){
+			angle_A_moved_from_start=sqrt(
+				pow((rsi_state_.cart_position[3]-pose_init_[3]),2));
+		}else{
+			//take it from the axis 6
+			angle_A_moved_from_start=sqrt(
+				pow((rsi_state_.positions[5]-pos_init_A6),2));
+		}
 		angle_B_error=-rsi_state_.cart_position[4] + aut_cmds_[4];
 		angle_C_moved_from_start=sqrt(
 			pow((rsi_state_.cart_position[4]-pose_init_[4]),2));
 		angle_C_error=-rsi_state_.cart_position[5] + aut_cmds_[5];
 		angle_C_moved_from_start=sqrt(
 			pow((rsi_state_.cart_position[5]-pose_init_[5]),2));
-				
+
 		//A,B,C moves between [-179,179]
+		
 		if(angle_A_error < -180){
 			angle_A_error = angle_A_error + 360;
 		}else if(angle_A_error > 180)
@@ -215,12 +224,12 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		}else if(angle_C_error > 180)
 			angle_C_error = angle_C_error - 360;	
 				
-		ROS_INFO(" ANGULO A IS AT:%f DESTINATIO:%f [ANGULO_A_error]:%f",rsi_state_.cart_position[3],aut_cmds_[3],angle_A_error);
 		
+	
 		//TRANSLATION
 		if(distance_from_start<=breaking_distance && distance_to_end<breaking_distance){ //trajectory is shorter than breaking distance
 			slope=0.05;
-			ROS_INFO("Too short");
+			//ROS_INFO("Too short");
 		}else if(distance_from_start<=breaking_distance){ //acceleration part
 			slope=distance_from_start/breaking_distance;
 		}else if(distance_to_end<breaking_distance){ //deceleration part
@@ -235,7 +244,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		if(distance_from_start>=total_distance_service){ //if it arrived to the desired position or it went further
 				slope=0;
 		}
-		ROS_INFO("Slope: %f",slope);
+		//ROS_INFO("Slope: %f",slope);
 		for (std::size_t i = 0; i < n_dof_-3; ++i)//x,y,z,
 		{
 		
@@ -244,52 +253,70 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		
 		}
 		
+		//Check if A will be out of range
+		if(!range_A6){
+			angle_A_error=first_angle_A_error-angle_A_moved_from_start*copysign(1,first_angle_A_error); 
+			ROS_INFO("trajectory with A6 out of range angle error: %f first angle error: %f",angle_A_error,first_angle_A_error);
+		}
 		//Rotation of A angle
-		
 		if(sqrt(pow((angle_A_error),2))>1){
-			if(angle_A_moved_from_start<5){
-				//slope for A angle
-				step_tr[3]=copysign(0.1*(angle_A_moved_from_start/5),angle_A_error);
-			}else if(sqrt(pow((angle_A_error),2))<5){
-				step_tr[3]=copysign(0.1*(sqrt(pow((angle_A_error),2))/5),angle_A_error);
-			}else{
-				step_tr[3]=copysign(0.1,angle_A_error);
-			}
-			if(sqrt(pow(step_tr[3],2))<sqrt(pow(0.015,2)))
-				step_tr[3]=copysign(0.015,angle_A_error);
+			//if(range_A6){
+
+					if(angle_A_moved_from_start<breaking_angle){
+						//slope for A angle
+						step_tr[3]=copysign(0.1*(angle_A_moved_from_start/breaking_angle),angle_A_error);
+					}else if(sqrt(pow((angle_A_error),2))<breaking_angle){
+						step_tr[3]=copysign(0.1*(sqrt(pow((angle_A_error),2))/breaking_angle),angle_A_error);
+					}else{
+						step_tr[3]=copysign(0.1,angle_A_error);
+					}
+					if(sqrt(pow(step_tr[3],2))<sqrt(pow(0.015,2)))
+						step_tr[3]=copysign(0.015,angle_A_error);
+			//}
+			/*else{
+				step_tr[3]=copysign(0.02,first_angle_A_error);
+				ROS_INFO("trajectory with A6 out of range step: %f",step_tr[3]);
+			}*/
+		
+		
 		}else{
 			step_tr[3]=0;
 		}
-		//ROS_INFO("Step angle A: %f moved from start/5 %f",step_tr[3],angle_A_moved_from_start/5);
+
 		rsi_abs_cart_correction_[3]=step_tr[3];
 		rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
 		
 		//Rotation of B angle
 		if(sqrt(pow((angle_B_error),2))>1){
-			/*if(rsi_state_.cart_position[4]<0){
-				step_tr[4]=copysign(0.015,angle_B_error);
+			if(rsi_state_.cart_position[3]<-90){
+				step_tr[4]=copysign(0.01,-angle_B_error);
 			}else
-				{*/
-				step_tr[4]=copysign(0.015,angle_B_error);
-				//}
+				{
+				step_tr[4]=copysign(0.01,angle_B_error);
+				}
 				
 		}else{
 			step_tr[4]=0;
 		}
-		rsi_abs_cart_correction_[4]=step_tr[4];
-		rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
+		//rsi_abs_cart_correction_[4]=step_tr[4];
+		//rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
 		
-		ROS_INFO("Step angle B: %f Actual pose:%f Destination:%f",step_tr[4],rsi_state_.cart_position[4],aut_cmds_[4] );
+		//ROS_INFO("Step angle B: %f Actual pose:%f Destination:%f",step_tr[4],rsi_state_.cart_position[4],aut_cmds_[4] );
 		
 		//Rotation of C angle 
 		if(sqrt(pow((angle_C_error),2))>1){
-			step_tr[5]=copysign(0.015,angle_C_error); 
+			if(rsi_state_.cart_position[3]<-90){
+				step_tr[5]=copysign(0.015,-angle_C_error);
+			}else
+				{
+				step_tr[5]=copysign(0.015,angle_C_error);
+				}
 		}else{
 			step_tr[5]=0;
 		}
-		rsi_abs_cart_correction_[5]=step_tr[5];
-		rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
-		ROS_INFO("Step angle C: %f Actual pose:%f Destination:%f",step_tr[5],rsi_state_.cart_position[5],aut_cmds_[5] );
+		//rsi_abs_cart_correction_[5]=step_tr[5];
+		//rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
+		//ROS_INFO("Step angle C: %f Actual pose:%f Destination:%f",step_tr[5],rsi_state_.cart_position[5],aut_cmds_[5] );
 
 		if((distance_to_end<1 && 
 		sqrt(pow((angle_A_error),2))<1 && 
@@ -299,6 +326,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			service_set_kuka_abs=false;
 			service_set_kuka_rel=false;
 			msgs_kuka_moving.data=false;
+			range_A6=true;
 			ROS_INFO("LAST ITERATION");
 		}
 		
@@ -326,25 +354,41 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
 			
 		}
-  
+		ROS_INFO(" NOT In Service, PAD");
 		//in kuka [4] is yaw [5] is pitch [6] ir roll
 		//rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+cartesian_pad_cmds_[5];
-		rsi_abs_cart_correction_[3]=cartesian_pad_cmds_[5];
-		rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
-	
-		//rsi_abs_cart_correction_[4]=rsi_abs_cart_correction_[4]+cartesian_pad_cmds_[4];
-		rsi_abs_cart_correction_[4]=cartesian_pad_cmds_[4];
-		rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
-	
-		//rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]+cartesian_pad_cmds_[3];
-		rsi_abs_cart_correction_[5]=cartesian_pad_cmds_[3];
-		rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
-	
+
+		/*if(((rsi_state_.cart_position[3]>98 or rsi_state_.cart_position[3]<-2) and cartesian_pad_cmds_[5]>=0)
+		or ((rsi_state_.cart_position[3]<0 or rsi_state_.cart_position[3]>100) and cartesian_pad_cmds_[5]<=0)){*/
+		
+		//	limits of angle of the tool
+		if((rsi_state_.positions[5]>=upper_limit_A6 && cartesian_pad_cmds_[5]>0) || (rsi_state_.positions[5]<=lower_limit_A6 && cartesian_pad_cmds_[5]<0)){ 
+			//ROS_INFO(" PAD: %f Posicion A:%f Axis6: %f",cartesian_pad_cmds_[5],rsi_state_.cart_position[3],rsi_state_.positions[5]);
+			ROS_INFO("Limits of Angle A reached. PAD: %f Posicion A:%f Axis6: %f",cartesian_pad_cmds_[5],rsi_state_.cart_position[3],rsi_state_.positions[5]);
+		}else{
+			rsi_abs_cart_correction_[3]=cartesian_pad_cmds_[5];
+			rsi_joint_position_corrections_[3]=rsi_abs_cart_correction_[3];
+			}
+		//}
+		//if(((rsi_state_.cart_position[4]>-10 and rsi_state_.cart_position[4]<9) and cartesian_pad_cmds_[4]>=0)
+		//or ((rsi_state_.cart_position[4]<10 and rsi_state_.cart_position[4]>-9) and cartesian_pad_cmds_[4]<=0)){
+			//rsi_abs_cart_correction_[4]=rsi_abs_cart_correction_[4]+cartesian_pad_cmds_[4];
+			rsi_abs_cart_correction_[4]=cartesian_pad_cmds_[4];
+			rsi_joint_position_corrections_[4]=rsi_abs_cart_correction_[4];
+		/*}else
+			ROS_INFO(" LIMITE ALCANZADO EN B! Porque poseB:%f y PAD: %f",rsi_state_.cart_position[4],cartesian_pad_cmds_[4]);
+		if(((rsi_state_.cart_position[5]>170 or rsi_state_.cart_position[5]<-169)and cartesian_pad_cmds_[3]>=0)
+		or ((rsi_state_.cart_position[5]>169 or rsi_state_.cart_position[5]<-170)and cartesian_pad_cmds_[3]<=0)){*/
+			//rsi_abs_cart_correction_[5]=rsi_abs_cart_correction_[5]+cartesian_pad_cmds_[3];
+			rsi_abs_cart_correction_[5]=cartesian_pad_cmds_[3];
+			rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
+		//}else
+		//	ROS_INFO(" LIMITE ALCANZADO EN C! Porque poseC:%f y PAD: %f",rsi_state_.cart_position[5],cartesian_pad_cmds_[3]);
 	}
 
 	out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
 	if(first_time){
-			ROS_INFO(" NOT In Service, PAD");
+			//ROS_INFO(" NOT In Service, PAD");
 			ROS_INFO("Send to robot:%s", out_buffer_.c_str());
 			first_time=false;
 		}
@@ -385,9 +429,27 @@ bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_CartesianEule
 	prev_angle_C_error=aut_cmds_[5]-pose_init_[5];
 	if(prev_angle_C_error<-180){
 		prev_angle_C_error=prev_angle_C_error+360;
-	}else if(prev_angle_C_error>180)
+	}else if(prev_angle_C_error>180){
 		prev_angle_C_error=prev_angle_C_error-360;	
+	}
+	if(prev_angle_A_error<-180){
+		prev_angle_A_error=prev_angle_A_error+360;
+	}else if(prev_angle_A_error>180){
+		prev_angle_A_error=prev_angle_A_error-360;	
+	}
 	float step_abs=velocity_trajectory_kuka*t_cyc*velocity_factor; //in mm
+	
+	pos_init_A6=rsi_state_.positions[5];
+	float req_A6=rsi_state_.positions[5]+prev_angle_A_error;
+	//out of range A6
+	if(req_A6>=upper_limit_A6 || req_A6<=lower_limit_A6){
+		prev_angle_A_error=prev_angle_A_error+360*(-prev_angle_A_error)/fabs(prev_angle_A_error);
+		first_angle_A_error=prev_angle_A_error;
+		range_A6=false;
+	}else{
+		range_A6=true;
+	}
+	
 	
 	 for (std::size_t i = 0; i < n_dof_-3; ++i) //division of the steps in distance to steps in axis
 	{
@@ -433,8 +495,23 @@ bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_Cartesia
 		prev_angle_C_error=prev_angle_C_error+360;
 	}else if(prev_angle_C_error>180)
 		prev_angle_C_error=prev_angle_C_error-360;
-		
+	if(prev_angle_A_error<-180){
+		prev_angle_A_error=prev_angle_A_error+360;
+	}else if(prev_angle_A_error>180){
+		prev_angle_A_error=prev_angle_A_error-360;	
+	}
 	float step_abs=velocity_trajectory_kuka*t_cyc*velocity_factor; //in mm
+	pos_init_A6=rsi_state_.positions[5];
+	float req_A6=rsi_state_.positions[5]+prev_angle_A_error;
+	//out of range A6
+	if(req_A6>=upper_limit_A6 || req_A6<=lower_limit_A6){
+		prev_angle_A_error=prev_angle_A_error+360*(-prev_angle_A_error)/fabs(prev_angle_A_error);
+		first_angle_A_error=prev_angle_A_error;
+		range_A6=false;
+	}else{
+		range_A6=true;
+	}
+	
 	
 	 for (std::size_t i = 0; i < n_dof_-3; ++i) //division of the steps in distance to steps in axis
 	{
@@ -489,6 +566,20 @@ bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_CartesianEule
 		
 	float step_abs=velocity_trajectory_kuka*t_cyc*velocity_factor; //in mm
 	
+	pos_init_A6=rsi_state_.positions[5];
+	float req_A6=rsi_state_.positions[5]+prev_angle_A_error;
+	//out of range A6
+	if(req_A6>=upper_limit_A6 || req_A6<=lower_limit_A6){
+		prev_angle_A_error=prev_angle_A_error+360*(-prev_angle_A_error)/fabs(prev_angle_A_error);
+		first_angle_A_error=prev_angle_A_error;
+		range_A6=false;
+	}else{
+		range_A6=true;
+	}
+	
+	
+	
+	
 	 for (std::size_t i = 0; i < n_dof_-3; ++i) //division of the steps in distance to steps in axis
 	{
 
@@ -538,6 +629,18 @@ bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_Cartesia
 			
 	float step_abs=velocity_trajectory_kuka*t_cyc*velocity_factor; //in mm
 	
+	pos_init_A6=rsi_state_.positions[5];
+	float req_A6=rsi_state_.positions[5]+prev_angle_A_error;
+	//out of range A6
+	if(req_A6>=upper_limit_A6 || req_A6<=lower_limit_A6){
+		prev_angle_A_error=prev_angle_A_error+360*(-prev_angle_A_error)/fabs(prev_angle_A_error);
+		first_angle_A_error=prev_angle_A_error;
+		range_A6=false;
+	}else{
+		range_A6=true;
+	}
+	
+	
 	 for (std::size_t i = 0; i < n_dof_-3; ++i) //division of the steps in distance to steps in axis
 	{
 
@@ -568,6 +671,11 @@ void KukaHardwareInterface::start()
 	velocity_factor=1;
 	counter_not_moving=0;
 	breaking_distance=150; //in mm 150
+	breaking_angle=5; //deg
+	
+	upper_limit_A6=14;
+	lower_limit_A6=-349;
+	range_A6=true;
   // Wait for connection from robot
   server_.reset(new UDPServer(local_host_, local_port_));
 
