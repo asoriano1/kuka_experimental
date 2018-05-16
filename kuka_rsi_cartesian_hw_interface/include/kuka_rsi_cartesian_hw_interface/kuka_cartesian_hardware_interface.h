@@ -156,9 +156,11 @@ private:
   float velocity_factor;
   float prev_distance_to_end;
   float prev_angle_A_error;
+  float first_angle_A_error;
   float prev_angle_B_error;
   float prev_angle_C_error;
   float breaking_distance;
+  float breaking_angle;
   float slope;
   float distance_from_start;
   float distance_to_end;
@@ -169,7 +171,10 @@ private:
   float angle_C_error;
   float angle_C_moved_from_start;
   float rot_A;
+  float pos_init_A6;
   bool first_time;
+  float upper_limit_A6, lower_limit_A6;
+  bool range_A6;
  
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
