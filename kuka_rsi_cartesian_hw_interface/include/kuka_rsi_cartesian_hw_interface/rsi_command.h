@@ -64,7 +64,9 @@ RSICommand::RSICommand(char type, std::vector<double> position_corrections, unsi
   TiXmlElement* root = new TiXmlElement("Sen");
   root->SetAttribute("Type", "ImFree");
   TiXmlElement* el;
+  
 
+      //Cartesian
   el = new TiXmlElement("RKorr");
   // Add string attribute
   el->SetAttribute("X", std::to_string(position_corrections[0]));
@@ -73,17 +75,25 @@ RSICommand::RSICommand(char type, std::vector<double> position_corrections, unsi
   el->SetAttribute("A", std::to_string(position_corrections[3]));
   el->SetAttribute("B", std::to_string(position_corrections[4]));
   el->SetAttribute("C", std::to_string(position_corrections[5]));
-
-/*  el = new TiXmlElement("AK");
-  // Add string attribute
-  el->SetAttribute("A1", std::to_string(position_corrections[0]));
-  el->SetAttribute("A2", std::to_string(position_corrections[1]));
-  el->SetAttribute("A3", std::to_string(position_corrections[2]));
-  el->SetAttribute("A4", std::to_string(position_corrections[3]));
-  el->SetAttribute("A5", std::to_string(position_corrections[4]));
-  el->SetAttribute("A6", std::to_string(position_corrections[5]));
-*/
   root->LinkEndChild(el);
+
+   //Axis
+	  
+
+  el = new TiXmlElement("AK");
+  // Add string attribute
+  el->SetAttribute("A1", std::to_string(position_corrections[6]));
+  el->SetAttribute("A2", std::to_string(position_corrections[7]));
+  el->SetAttribute("A3", std::to_string(position_corrections[8]));
+  el->SetAttribute("A4", std::to_string(position_corrections[9]));
+  el->SetAttribute("A5", std::to_string(position_corrections[10]));
+  el->SetAttribute("A6", std::to_string(position_corrections[11]));
+
+  root->LinkEndChild(el);
+
+  
+
+  
   el = new TiXmlElement("IPOC");
   el->LinkEndChild(new TiXmlText(std::to_string(ipoc)));
   root->LinkEndChild(el);

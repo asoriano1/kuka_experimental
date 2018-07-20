@@ -68,6 +68,7 @@
 // RSI
 #include <kuka_rsi_cartesian_hw_interface/rsi_state.h>
 #include <kuka_rsi_cartesian_hw_interface/rsi_command.h>
+#include <kuka_rsi_cartesian_hw_interface/set_A1_A6.h>
 
 #include <robotnik_trajectory_pad/CartesianEuler.h>
 #include <robotnik_msgs/set_CartesianEuler_pose.h>
@@ -127,6 +128,7 @@ private:
   ros::ServiceServer set_kuka_odometry_rel;
   ros::ServiceServer set_kuka_odometry_abs_fast;
   ros::ServiceServer set_kuka_odometry_rel_fast;
+  ros::ServiceServer set_kuka_A1_A6;
 
   //Publishers of robot state
   ros::Publisher cart_pos_pub;
@@ -144,10 +146,14 @@ private:
   
   //for the service
   float aut_cmds_[6]; //desired position
+  float aut_cmds_axes[6];
   float pose_init_[6];
+  float pose_init_axes[6];
   bool service_set_kuka_abs;
   bool service_set_kuka_rel;
+  bool service_set_kuka_axes;
   float step_tr[6];
+  float step_axes[6];
   float moving_[6];
   float velocity_trajectory_kuka;
   float t_cyc;
@@ -161,6 +167,10 @@ private:
   float first_angle_B_error;
   float prev_angle_C_error;
   float first_angle_C_error;
+  float prev_A6_error;
+  float first_A1_error;
+  float first_A6_error;
+  float prev_A1_error;
   float breaking_distance;
   float breaking_angle;
   float slope;
@@ -172,12 +182,18 @@ private:
   float angle_B_moved_from_start;
   float angle_C_error;
   float angle_C_moved_from_start;
+  float A1_moved_from_start;
+  float A6_moved_from_start;
   float rot_A;
   float pos_init_A6;
   float req_A6;
+  float A1_error;
+  float A6_error;
   bool first_time;
   float upper_limit_A6, lower_limit_A6;
   bool range_A6;
+  float A1_moved; //temporal correction
+  float limit_low_x;
  
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
@@ -197,6 +213,7 @@ public:
   bool setKukaOdometry_rel(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response);
   bool setKukaOdometry_abs_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response);
   bool setKukaOdometry_rel_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response);
+  bool setKuka_A1_A6(kuka_rsi_cartesian_hw_interface::set_A1_A6::Request &request, kuka_rsi_cartesian_hw_interface::set_A1_A6::Response &response);
 
 
 };

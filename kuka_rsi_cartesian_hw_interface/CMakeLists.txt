@@ -12,12 +12,20 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   robotnik_trajectory_pad
+  message_generation
   
 )
 
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(TinyXML REQUIRED)
-
+add_service_files(
+	FILES
+	set_A1_A6.srv
+)
+generate_messages(
+	DEPENDENCIES
+	std_msgs
+)
 
 catkin_package(
   INCLUDE_DIRS
