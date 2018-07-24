@@ -183,13 +183,13 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		slope=1;
 		
 		distance_from_start=sqrt(
-			pow((rsi_state_.cart_position[0]-pose_init_[0]),2)+
-			pow((rsi_state_.cart_position[1]-pose_init_[1]),2)+
+			pow(((rsi_state_.cart_position[0]*cos(A1_moved*M_PI/180)-rsi_state_.cart_position[1]*sin(A1_moved*M_PI/180))-pose_init_[0]),2)+
+			pow(((rsi_state_.cart_position[1]*cos(A1_moved*M_PI/180)+rsi_state_.cart_position[0]*sin(A1_moved*M_PI/180))-pose_init_[1]),2)+
 			pow((rsi_state_.cart_position[2]-pose_init_[2]),2));
 			
 		distance_to_end=sqrt(
-			pow((-rsi_state_.cart_position[0]+aut_cmds_[0]),2)+
-			pow((-rsi_state_.cart_position[1]+aut_cmds_[1]),2)+
+			pow((-(rsi_state_.cart_position[0]*cos(A1_moved*M_PI/180)-rsi_state_.cart_position[1]*sin(A1_moved*M_PI/180))+aut_cmds_[0]),2)+
+			pow((-(rsi_state_.cart_position[1]*cos(A1_moved*M_PI/180)+rsi_state_.cart_position[0]*sin(A1_moved*M_PI/180))+aut_cmds_[1]),2)+
 			pow((-rsi_state_.cart_position[2]+aut_cmds_[2]),2));
 		//ROS_INFO(" In Service distance from start:%f distance to end: %f",distance_from_start,distance_to_end);
 		
@@ -263,7 +263,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		if(distance_from_start>=total_distance_service){ //if it arrived to the desired position or it went further
 				slope=0;
 		}
-		//ROS_INFO("Slope: %f",slope);
+                
 		for (std::size_t i = 0; i < n_dof_-3; ++i)//x,y,z,
 		{
 		
@@ -271,7 +271,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
 		
 		}
-		
+		//ROS_INFO("Steps: %f %f",rsi_joint_position_corrections_[0],rsi_joint_position_corrections_[1]);
 		//Check if A will be out of range
 		if(!range_A6){
 			//angle_A_error=first_angle_A_error-angle_A_moved_from_start*copysign(1,first_angle_A_error); 
@@ -427,6 +427,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		if((sqrt(pow((A1_error),2))<1 && 
 		sqrt(pow((A6_error),2))<1)
 		|| counter_not_moving>=100){ //Last loop of the service or it stopped 100 cycles of not moving interrupts the service
+                        A1_moved+=rsi_state_.positions[0]-pose_init_axes[0];
 			service_set_kuka_axes=false;
 			msgs_kuka_moving.data=false;
 			range_A6=true;
@@ -447,6 +448,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		
 		
 	}else if(!service_set_kuka_abs && !service_set_kuka_rel){
+                /*
 		
 		for (std::size_t i = 0; i < n_dof_-3; ++i)
 		{
@@ -454,8 +456,13 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			rsi_joint_position_corrections_[i]=rsi_abs_cart_correction_[i];
 			
 		}
-                
-                
+                */
+                rsi_abs_cart_correction_[0]=cartesian_pad_cmds_[0]*cos(A1_moved*M_PI/180)-cartesian_pad_cmds_[1]*sin(A1_moved*M_PI/180);
+                rsi_joint_position_corrections_[0]=rsi_abs_cart_correction_[0];
+                rsi_abs_cart_correction_[1]=cartesian_pad_cmds_[1]*cos(A1_moved*M_PI/180)+cartesian_pad_cmds_[0]*sin(A1_moved*M_PI/180);
+                rsi_joint_position_corrections_[1]=rsi_abs_cart_correction_[1];
+                rsi_abs_cart_correction_[2]=cartesian_pad_cmds_[2];
+                rsi_joint_position_corrections_[2]=rsi_abs_cart_correction_[2];
 		//in kuka [4] is yaw [5] is pitch [6] ir roll
 		//rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+cartesian_pad_cmds_[5];
 
@@ -486,26 +493,29 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
                 */
                         //Axis movement
+                        //Temporal correction
                         rsi_abs_cart_correction_[6]=cartesian_pad_cmds_[3];
 			rsi_joint_position_corrections_[6]=rsi_abs_cart_correction_[6];
                         rsi_abs_cart_correction_[11]=cartesian_pad_cmds_[4];
 			rsi_joint_position_corrections_[11]=rsi_abs_cart_correction_[11];
                         
-                        
 		//}else
 		//	ROS_INFO(" LIMITE ALCANZADO EN C! Porque poseC:%f y PAD: %f",rsi_state_.cart_position[5],cartesian_pad_cmds_[3]);
 	}
-        //Temporal correction
         /*
-        A1_moved+=rsi_abs_cart_correction_[6]; //temporal correction
-        rsi_abs_cart_correction_[0]=cartesian_pad_cmds_[0]*cos(A1_moved*M_PI/180)-cartesian_pad_cmds_[1]*sin(A1_moved*M_PI/180);
+        //Temporal correction
+        rsi_abs_cart_correction_[0]=rsi_joint_position_corrections_[0]*cos(A1_moved*M_PI/180)-rsi_joint_position_corrections_[1]*sin(A1_moved*M_PI/180);
         rsi_joint_position_corrections_[0]=rsi_abs_cart_correction_[0];
-        rsi_abs_cart_correction_[1]=cartesian_pad_cmds_[1];
-        rsi_joint_position_corrections_[1]=cartesian_pad_cmds_[1]*cos(A1_moved*M_PI/180)+cartesian_pad_cmds_[0]*sin(A1_moved*M_PI/180);
-        */
         
+        rsi_abs_cart_correction_[1]=rsi_joint_position_corrections_[1]*cos(A1_moved*M_PI/180)+rsi_joint_position_corrections_[0]*sin(A1_moved*M_PI/180);
+        rsi_joint_position_corrections_[1]=rsi_abs_cart_correction_[1];
+        //ROS_INFO("Corrections  %f %f", rsi_joint_position_corrections_[0], rsi_joint_position_corrections_[1]);
+        */
+        //X limit commented
+        /*
 	if(rsi_state_.cart_position[0]<=limit_low_x && rsi_joint_position_corrections_[0]<0)
 		rsi_joint_position_corrections_[0]=0;
+                */
 
 	out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
 	if(first_time){
@@ -526,14 +536,18 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 
 	counter_not_moving=0;
-	for (std::size_t i = 0; i < n_dof_; ++i) //position at the start of the service
+        
+	for (std::size_t i = 2; i < n_dof_; ++i) //position at the start of the service
 	{
 		pose_init_[i]=rsi_state_.cart_position[i];
 	}
 	
+        pose_init_[0]=rsi_state_.cart_position[0]*cos(A1_moved*M_PI/180)-rsi_state_.cart_position[1]*sin(A1_moved*M_PI/180);
+        pose_init_[1]=rsi_state_.cart_position[1]*cos(A1_moved*M_PI/180)+rsi_state_.cart_position[0]*sin(A1_moved*M_PI/180);
+        pose_init_[2]=rsi_state_.cart_position[2];
 	//end position wanted
-	aut_cmds_[0]=request.x;
-	aut_cmds_[1]=request.y;
+	aut_cmds_[0]=request.x*cos(A1_moved*M_PI/180)-request.y*sin(A1_moved*M_PI/180);
+	aut_cmds_[1]=request.y*cos(A1_moved*M_PI/180)+request.x*sin(A1_moved*M_PI/180);
 	aut_cmds_[2]=request.z;
 	aut_cmds_[3]=request.A;
 	aut_cmds_[4]=request.B;
@@ -615,15 +629,17 @@ bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_CartesianEule
 //service for abs coord
 bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 	counter_not_moving=0;
-
-	for (std::size_t i = 0; i < n_dof_; ++i) //position at the start of the service
+        
+	for (std::size_t i = 2; i < n_dof_; ++i) //position at the start of the service
 	{
 		pose_init_[i]=rsi_state_.cart_position[i];
 	}
 	
+        pose_init_[0]=rsi_state_.cart_position[0]*cos(A1_moved*M_PI/180)-rsi_state_.cart_position[1]*sin(A1_moved*M_PI/180);
+        pose_init_[1]=rsi_state_.cart_position[1]*cos(A1_moved*M_PI/180)+rsi_state_.cart_position[0]*sin(A1_moved*M_PI/180);
 	//end position wanted
-	aut_cmds_[0]=request.x;
-	aut_cmds_[1]=request.y;
+	aut_cmds_[0]=request.x*cos(A1_moved*M_PI/180)-request.y*sin(A1_moved*M_PI/180);
+	aut_cmds_[1]=request.y*cos(A1_moved*M_PI/180)+request.x*sin(A1_moved*M_PI/180);
 	aut_cmds_[2]=request.z;
 	aut_cmds_[3]=request.A;
 	aut_cmds_[4]=request.B;
@@ -698,14 +714,15 @@ bool KukaHardwareInterface::setKukaOdometry_abs_fast(robotnik_msgs::set_Cartesia
 //service for rel coord
 bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 		counter_not_moving=0;
-		for (std::size_t i = 0; i < n_dof_; ++i) //position at the start of the service
+		for (std::size_t i = 2; i < n_dof_; ++i) //position at the start of the service
 	{
 		pose_init_[i]=rsi_state_.cart_position[i];
 	}
-	
+        pose_init_[0]=rsi_state_.cart_position[0]*cos(A1_moved*M_PI/180)-rsi_state_.cart_position[1]*sin(A1_moved*M_PI/180);
+        pose_init_[1]=rsi_state_.cart_position[1]*cos(A1_moved*M_PI/180)+rsi_state_.cart_position[0]*sin(A1_moved*M_PI/180);
 	//end position wanted
-	aut_cmds_[0]=request.x+pose_init_[0];
-	aut_cmds_[1]=request.y+pose_init_[1];
+	aut_cmds_[0]=request.x*cos(A1_moved*M_PI/180)-request.y*sin(A1_moved*M_PI/180)+pose_init_[0];
+	aut_cmds_[1]=request.y*cos(A1_moved*M_PI/180)+request.x*sin(A1_moved*M_PI/180)+pose_init_[1];
 	aut_cmds_[2]=request.z+pose_init_[2];
 	aut_cmds_[3]=request.A+pose_init_[3];
 	aut_cmds_[4]=request.B+pose_init_[4];
@@ -762,14 +779,15 @@ bool KukaHardwareInterface::setKukaOdometry_rel(robotnik_msgs::set_CartesianEule
 //service for rel coord
 bool KukaHardwareInterface::setKukaOdometry_rel_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response){	
 			counter_not_moving=0;
-			for (std::size_t i = 0; i < n_dof_; ++i) //position at the start of the service
+			for (std::size_t i = 2; i < n_dof_; ++i) //position at the start of the service
 	{
 		pose_init_[i]=rsi_state_.cart_position[i];
 	}
-	
+        pose_init_[0]=rsi_state_.cart_position[0]*cos(A1_moved*M_PI/180)-rsi_state_.cart_position[1]*sin(A1_moved*M_PI/180);
+        pose_init_[1]=rsi_state_.cart_position[1]*cos(A1_moved*M_PI/180)+rsi_state_.cart_position[0]*sin(A1_moved*M_PI/180);
 	//end position wanted
-	aut_cmds_[0]=request.x+pose_init_[0];
-	aut_cmds_[1]=request.y+pose_init_[1];
+	aut_cmds_[0]=request.x*cos(A1_moved*M_PI/180)-request.y*sin(A1_moved*M_PI/180)+pose_init_[0];
+	aut_cmds_[1]=request.y*cos(A1_moved*M_PI/180)+request.x*sin(A1_moved*M_PI/180)+pose_init_[1];
 	aut_cmds_[2]=request.z+pose_init_[2];
 	aut_cmds_[3]=request.A+pose_init_[3];
 	aut_cmds_[4]=request.B+pose_init_[4];
