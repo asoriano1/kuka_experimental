@@ -89,6 +89,7 @@ KukaHardwareInterface::KukaHardwareInterface() :
   set_kuka_odometry_abs_fast=nh_.advertiseService("setKukaAbsFast",&KukaHardwareInterface::setKukaOdometry_abs_fast,this);
   set_kuka_odometry_rel_fast=nh_.advertiseService("setKukaRelFast",&KukaHardwareInterface::setKukaOdometry_rel_fast,this);
   set_kuka_A1_A6=nh_.advertiseService("setKukaA1A6",&KukaHardwareInterface::setKuka_A1_A6,this);
+  set_moveRelTool=nh_.advertiseService("setMoveRelTool", &KukaHardwareInterface::setMoveRelTool,this);
 
 }
 
@@ -110,6 +111,10 @@ void KukaHardwareInterface::padcallback(const robotnik_trajectory_pad::Cartesian
   cartesian_pad_cmds_[3]=cartesian_move->pitch; //Used for axis1 movement
   cartesian_pad_cmds_[4]=cartesian_move->roll; //Used for axis 6 movement
   cartesian_pad_cmds_[5]=cartesian_move->yaw;
+  if(move_rel_tool){
+    cartesian_pad_cmds_[0]=cartesian_move->x*cos(rot_A*M_PI/180)-cartesian_move->y*sin(rot_A*M_PI/180);
+    cartesian_pad_cmds_[1]=cartesian_move->y*cos(rot_A*M_PI/180)+cartesian_move->x*sin(rot_A*M_PI/180);      
+  }
   
 }
 
@@ -866,6 +871,18 @@ bool KukaHardwareInterface::setKuka_A1_A6(kuka_rsi_cartesian_hw_interface::set_A
 	
 	
 }
+//Service to enable or disable the movement relative to the tool coordinates
+bool KukaHardwareInterface::setMoveRelTool(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response){
+      if(request.data==true){
+		move_rel_tool=true;
+		response.success=true;
+	}else if(request.data==false){
+		move_rel_tool=false;
+		response.success=true;
+	}
+	
+	return true;  
+}
 void KukaHardwareInterface::start()
 {
 	//for the service
@@ -886,6 +903,7 @@ void KukaHardwareInterface::start()
 	upper_limit_A6=340;//14+180; //cambiada configuración  muñeca
 	lower_limit_A6=30;//-349+180; //cambiada configuración  muñeca
 	range_A6=true;
+        move_rel_tool=false;
 	limit_low_x=-650;
         A1_moved=0.0;
   // Wait for connection from robot

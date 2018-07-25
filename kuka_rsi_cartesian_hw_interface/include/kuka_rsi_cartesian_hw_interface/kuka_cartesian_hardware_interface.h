@@ -48,6 +48,7 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
+#include <std_srvs/SetBool.h>
 
 // ros_control
 #include <realtime_tools/realtime_publisher.h>
@@ -129,6 +130,7 @@ private:
   ros::ServiceServer set_kuka_odometry_abs_fast;
   ros::ServiceServer set_kuka_odometry_rel_fast;
   ros::ServiceServer set_kuka_A1_A6;
+  ros::ServiceServer set_moveRelTool;
 
   //Publishers of robot state
   ros::Publisher cart_pos_pub;
@@ -194,6 +196,7 @@ private:
   bool range_A6;
   float A1_moved; //temporal correction
   float limit_low_x;
+  bool move_rel_tool; //to move relatively to tool coordinates
  
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;
@@ -214,6 +217,7 @@ public:
   bool setKukaOdometry_abs_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response);
   bool setKukaOdometry_rel_fast(robotnik_msgs::set_CartesianEuler_pose::Request &request, robotnik_msgs::set_CartesianEuler_pose::Response &response);
   bool setKuka_A1_A6(kuka_rsi_cartesian_hw_interface::set_A1_A6::Request &request, kuka_rsi_cartesian_hw_interface::set_A1_A6::Response &response);
+  bool setMoveRelTool(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response);
 
 
 };
