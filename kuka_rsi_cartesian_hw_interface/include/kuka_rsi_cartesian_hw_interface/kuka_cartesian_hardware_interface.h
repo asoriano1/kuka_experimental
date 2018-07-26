@@ -197,6 +197,7 @@ private:
   float A1_moved; //temporal correction
   float limit_low_x;
   bool move_rel_tool; //to move relatively to tool coordinates
+  float step_max_A1;
  
   //publisher
   boost::shared_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_pub_;

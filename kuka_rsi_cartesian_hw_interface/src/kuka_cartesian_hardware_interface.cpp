@@ -100,17 +100,16 @@ KukaHardwareInterface::~KukaHardwareInterface()
 //callback from topic /cartesian_move
 void KukaHardwareInterface::padcallback(const robotnik_trajectory_pad::CartesianEuler::ConstPtr& cartesian_move)
 {
-
-  // TRANSFORMATION FOR TOOL ORIENTATION angles in radians
-  //rot_A=rsi_state_.cart_position[3]+90;
   rot_A = cart_pos.A + 90;
-  cartesian_pad_cmds_[0]=cartesian_move->x;//*cos(rot_A*M_PI/180)-cartesian_move->y*sin(rot_A*M_PI/180);
-  cartesian_pad_cmds_[1]=cartesian_move->y;//*cos(rot_A*M_PI/180)+cartesian_move->x*sin(rot_A*M_PI/180);
+  cartesian_pad_cmds_[0]=cartesian_move->x;
+  cartesian_pad_cmds_[1]=cartesian_move->y;
   
   cartesian_pad_cmds_[2]=cartesian_move->z;
   cartesian_pad_cmds_[3]=cartesian_move->pitch; //Used for axis1 movement
   cartesian_pad_cmds_[4]=cartesian_move->roll; //Used for axis 6 movement
   cartesian_pad_cmds_[5]=cartesian_move->yaw;
+  
+    // TRANSFORMATION FOR TOOL ORIENTATION angles in radians
   if(move_rel_tool){
     cartesian_pad_cmds_[0]=cartesian_move->x*cos(rot_A*M_PI/180)-cartesian_move->y*sin(rot_A*M_PI/180);
     cartesian_pad_cmds_[1]=cartesian_move->y*cos(rot_A*M_PI/180)+cartesian_move->x*sin(rot_A*M_PI/180);      
@@ -199,8 +198,8 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		//ROS_INFO(" In Service distance from start:%f distance to end: %f",distance_from_start,distance_to_end);
 		
 		angle_A_error=-rsi_state_.cart_position[3] + aut_cmds_[3];
-		//angle_A_error=-rsi_state_.positions[5]+req_A6;
-		if(range_A6){
+                
+		//if(range_A6){
 			
 			angle_A_moved_from_start=sqrt(
 				pow((rsi_state_.cart_position[3]-pose_init_[3]),2));
@@ -208,17 +207,18 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			/*angle_A_moved_from_start=sqrt(
 				pow((rsi_state_.positions[5]-pos_init_A6),2));
 				*/
-		}else{
+		//}else{
 			//take it from the axis 6
 			/*
 			angle_A_moved_from_start=sqrt(
 				pow((rsi_state_.positions[5]-pos_init_A6),2));
 				*/
-		angle_A_moved_from_start=sqrt(
-				pow((rsi_state_.cart_position[3]-pose_init_[3]),2));
-		}
+		//angle_A_moved_from_start=sqrt(
+		//		pow((rsi_state_.cart_position[3]-pose_init_[3]),2));
+		//}
 		//angle_B_error=-rsi_state_.cart_position[4] + aut_cmds_[4]; //first_angle_B_error-angle_B_moved_from_start
 		
+                //Errors in B and C commented
 		angle_B_moved_from_start=sqrt(
 			pow((rsi_state_.cart_position[4]-pose_init_[4]),2));
 		angle_B_error=0;//first_angle_B_error-copysign(angle_B_moved_from_start,first_angle_B_error);
@@ -383,22 +383,27 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 				pow((rsi_state_.positions[5]-pose_init_axes[5]),2));
 				
 				
-		if(sqrt(pow((A1_error),2))>1){
+		if(sqrt(pow((A1_error),2))>0.1){
 
 					if(A1_moved_from_start<(2*breaking_angle)){
 						//slope for A1 angle
-						step_axes[0]=copysign(0.1*(A1_moved_from_start/(2*breaking_angle)),A1_error);
-					}else if(sqrt(pow((A1_error),2))<(2*breaking_angle)){
-						step_axes[0]=copysign(0.1*(sqrt(pow((A1_error),2))/(2*breaking_angle)),A1_error);
+						step_axes[0]=copysign(step_max_A1*(A1_moved_from_start/(2*breaking_angle)),A1_error);
+                                               // ROS_INFO("Start");
+					}else if(sqrt(pow((A1_error),2))<=(2*breaking_angle)){
+						step_axes[0]=copysign(step_max_A1*((fabs(A1_error))/(2*breaking_angle)),A1_error);
+                                                //ROS_INFO("Arriving %f",sqrt(pow((A1_error),2))/(2*breaking_angle) );
 					}else{
-						step_axes[0]=copysign(0.1,A1_error);
+						step_axes[0]=copysign(step_max_A1,A1_error);
 					}
-					if(sqrt(pow(step_axes[0],2))<sqrt(pow(0.007,2)) || fabs(first_A1_error)<4*breaking_angle) //shorter than breaking angle, doing it slow, no slope
-						step_axes[0]=copysign(0.007,A1_error);//A1 acc slower than A6
+					if(fabs(step_axes[0])<=0.001 || fabs(first_A1_error)<4*breaking_angle){ //shorter than breaking angle, doing it slow, no slope
+						step_axes[0]=copysign(0.001,A1_error);//A1 acc slower than A6
+                                                //ROS_INFO("End");
+                                        }
 		
 		}else{
 			step_axes[0]=0;
 		}
+                ROS_INFO("Step-0.001 %f",fabs(step_axes[0])-0.001 );
 		ROS_INFO("step A1 %f error A1 %f",step_axes[0], A1_error);
 		
 		rsi_abs_cart_correction_[6]=step_axes[0];
@@ -871,7 +876,7 @@ bool KukaHardwareInterface::setKuka_A1_A6(kuka_rsi_cartesian_hw_interface::set_A
 	
 	
 }
-//Service to enable or disable the movement relative to the tool coordinates
+//Service to enable or disable the movement relative to the tool coordinates with the pad
 bool KukaHardwareInterface::setMoveRelTool(std_srvs::SetBool::Request &request, std_srvs::SetBool::Response &response){
       if(request.data==true){
 		move_rel_tool=true;
@@ -899,6 +904,7 @@ void KukaHardwareInterface::start()
 	counter_not_moving=0;
 	breaking_distance=150; //in mm 150
 	breaking_angle=5; //deg
+        step_max_A1=0.2;//0.1 proportional to the maximal velocity of Axis 1
 	
 	upper_limit_A6=340;//14+180; //cambiada configuración  muñeca
 	lower_limit_A6=30;//-349+180; //cambiada configuración  muñeca
