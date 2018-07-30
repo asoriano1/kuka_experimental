@@ -83,6 +83,7 @@ KukaHardwareInterface::KukaHardwareInterface() :
   
   //subscriber
   pad_subs = nh_.subscribe<robotnik_trajectory_pad::CartesianEuler>("/kuka_pad/cartesian_move", 1, &KukaHardwareInterface::padcallback, this);
+  weight_subs = nh_.subscribe<std_msgs::Float64>("/phidget_load/load_mean", 1, &KukaHardwareInterface::weightcallback, this);
   //service
   set_kuka_odometry_abs=nh_.advertiseService("setKukaAbs",&KukaHardwareInterface::setKukaOdometry_abs,this);
   set_kuka_odometry_rel=nh_.advertiseService("setKukaRel",&KukaHardwareInterface::setKukaOdometry_rel,this);
@@ -473,6 +474,12 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
                 rsi_joint_position_corrections_[1]=rsi_abs_cart_correction_[1];
                 rsi_abs_cart_correction_[2]=cartesian_pad_cmds_[2];
                 rsi_joint_position_corrections_[2]=rsi_abs_cart_correction_[2];
+                
+                //Limits in Z coming from the service, to block if overpressing
+                if(nZToZero && rsi_joint_position_corrections_[2]<0){
+                        rsi_joint_position_corrections_[2]=0.0;
+                        ROS_INFO("Blocking -Z");
+                }
 		//in kuka [4] is yaw [5] is pitch [6] ir roll
 		//rsi_abs_cart_correction_[3]=rsi_abs_cart_correction_[3]+cartesian_pad_cmds_[5];
 
@@ -503,7 +510,6 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			rsi_joint_position_corrections_[5]=rsi_abs_cart_correction_[5];
                 */
                         //Axis movement
-                        //Temporal correction
                         rsi_abs_cart_correction_[6]=cartesian_pad_cmds_[3];
 			rsi_joint_position_corrections_[6]=rsi_abs_cart_correction_[6];
                         rsi_abs_cart_correction_[11]=cartesian_pad_cmds_[4];
@@ -888,6 +894,15 @@ bool KukaHardwareInterface::setMoveRelTool(std_srvs::SetBool::Request &request, 
 	
 	return true;  
 }
+//Topic to read the pressing weight made by the tool and enable to block the negative Z direction of movement of the pad 
+void KukaHardwareInterface::weightcallback(const std_msgs::Float64::ConstPtr& weight_value){
+      //ROS_INFO("weight received %f", weight_value->data);
+      if(weight_value->data>=8.0){
+		nZToZero=true;
+	}else if(weight_value->data<=7.5){
+		nZToZero=false;
+	}
+}
 void KukaHardwareInterface::start()
 {
 	//for the service
@@ -910,6 +925,7 @@ void KukaHardwareInterface::start()
 	lower_limit_A6=30;//-349+180; //cambiada configuración  muñeca
 	range_A6=true;
         move_rel_tool=false;
+        nZToZero=false;
 	limit_low_x=-650;
         A1_moved=0.0;
   // Wait for connection from robot

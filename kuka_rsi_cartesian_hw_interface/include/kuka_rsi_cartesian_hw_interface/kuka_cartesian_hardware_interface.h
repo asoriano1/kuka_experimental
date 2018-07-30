@@ -48,6 +48,7 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float64.h>
 #include <std_srvs/SetBool.h>
 
 // ros_control
@@ -121,9 +122,11 @@ private:
   
   //Cartesian movement from topic
   ros::Subscriber pad_subs;
+  ros::Subscriber weight_subs;
   std::vector<double> cartesian_pad_cmds_;
   
   void padcallback(const robotnik_trajectory_pad::CartesianEuler::ConstPtr& c);
+  void weightcallback(const std_msgs::Float64::ConstPtr& c);
   
   ros::ServiceServer set_kuka_odometry_abs;
   ros::ServiceServer set_kuka_odometry_rel;
@@ -197,6 +200,7 @@ private:
   float A1_moved; //temporal correction
   float limit_low_x;
   bool move_rel_tool; //to move relatively to tool coordinates
+  bool nZToZero;
   float step_max_A1;
  
   //publisher
