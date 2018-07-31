@@ -368,8 +368,8 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 		}else{
 			step_axes[0]=0;
 		}
-                ROS_INFO("Step-0.001 %f",fabs(step_axes[0])-0.001 );
-		ROS_INFO("step A1 %f error A1 %f",step_axes[0], A1_error);
+                //ROS_INFO("Step-0.001 %f",fabs(step_axes[0])-0.001 );
+		//ROS_INFO("step A1 %f error A1 %f",step_axes[0], A1_error);
 		
 		rsi_abs_cart_correction_[6]=step_axes[0];
 		rsi_joint_position_corrections_[6]=rsi_abs_cart_correction_[6];
@@ -461,6 +461,18 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			rsi_joint_position_corrections_[11]=rsi_abs_cart_correction_[11];
                         
 	}
+        
+        //Limits of -x to avoid wall collision. Taking into account temporal correction 
+        float x_disp_real=(rsi_joint_position_corrections_[0]+rsi_joint_position_corrections_[1]*sin(A1_moved*M_PI/180))/cos(A1_moved*M_PI/180);//corrected x
+        if(rsi_state_.cart_position[0]<=limit_low_x && x_disp_real<0){
+                rsi_joint_position_corrections_[0]=0;
+                rsi_joint_position_corrections_[1]=0;
+                ROS_INFO("-x out of range");
+        }
+        if(rsi_state_.cart_position[2]>=2500 && rsi_joint_position_corrections_[2]>0){
+                rsi_joint_position_corrections_[2]=0;
+                ROS_INFO("+z out of range");
+        }
 
 	out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
 	if(first_time){
@@ -469,7 +481,7 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 			first_time=false;
 		}
 		
-	ROS_INFO("Send to robot:%s", out_buffer_.c_str());
+	//ROS_INFO("Send to robot:%s", out_buffer_.c_str());
 	server_->send(out_buffer_);
 	kuka_moving_pub.publish(msgs_kuka_moving);
   
