@@ -529,7 +529,6 @@ bool KukaHardwareInterface::setKukaOdometry_abs(robotnik_msgs::set_CartesianEule
 			pow((pose_init_[1]),2));
 	
 	//Movement of the angle A6 due to the translation 
-	//float tras_A6=acos((pow(dist_start_end,2)-pow(dist_origin_end,2)-pow(dist_origin_start,2))/(-2*dist_origin_end*dist_origin_start))*180/3.14159; 
 	float tras_A6=(atan2(aut_cmds_[1],aut_cmds_[0])-atan2(pose_init_[1],pose_init_[0]))*180/3.14159; 
 	prev_distance_to_end=total_distance_service;
 	prev_angle_A_error=aut_cmds_[3]-pose_init_[3];
