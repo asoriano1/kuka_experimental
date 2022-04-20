@@ -349,6 +349,8 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 				
 				
 		if(sqrt(pow((A1_error),2))>0.1){
+                        
+                                        
 
 					if(A1_moved_from_start<(2*breaking_angle)){
 						//slope for A1 angle
@@ -361,9 +363,10 @@ bool KukaHardwareInterface::write(const ros::Time time, const ros::Duration peri
 						step_axes[0]=copysign(step_max_A1,A1_error);
 					}
 					if(fabs(step_axes[0])<=0.001 || fabs(first_A1_error)<4*breaking_angle){ //shorter than breaking angle, doing it slow, no slope
-						step_axes[0]=copysign(0.001,A1_error);//A1 acc slower than A6
+						step_axes[0]=copysign(0.001,A1_error);//A1 acc slower than A6 0.001 0.003
                                                 //ROS_INFO("End");
                                         }
+                                       
 		
 		}else{
 			step_axes[0]=0;
@@ -857,7 +860,7 @@ void KukaHardwareInterface::start()
         t_cyc=0.12; // milisec
 	velocity_factor=1;
 	counter_not_moving=0;
-	breaking_distance=150; //in mm 150
+	breaking_distance=150; //in mm 150 
 	breaking_angle=5; //deg
         step_max_A1=0.2;//0.1 proportional to the maximal velocity of Axis 1
 	
