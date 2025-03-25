@@ -34,7 +34,6 @@
  *********************************************************************/
 
 /*
- * Author: Lars Tingelstad <lars.tingelstad@ntnu.no>
  * Author: Ángel Soriano <asoriano@robotnik.es>
  */
 
@@ -54,8 +53,7 @@ namespace kuka_rsi_cartesian_hw_interface
 	KukaHardwareInterface::KukaHardwareInterface() : joint_position_(6, 0.0), 
 	joint_velocity_(6, 0.0), joint_effort_(6, 0.0), joint_position_command_(12, 0.0), 
 	joint_velocity_command_(6, 0.0), joint_effort_command_(6, 0.0), joint_names_(6), 
-	rsi_initial_joint_positions_(12, 0.0), rsi_joint_position_corrections_(12, 0.0),
-	ipoc_(0), n_dof_(6), cartesian_pad_cmds_(12, 0.0), total_distance_to_cover_(0)
+	rsi_initial_command_(12, 0.0), ipoc_(0), n_dof_(6), total_distance_to_cover_(0)
 	{
 		in_buffer_.resize(1024);
 		out_buffer_.resize(1024);
@@ -111,7 +109,7 @@ namespace kuka_rsi_cartesian_hw_interface
 		A6_in_valid_range = true;
 		move_relative_to_tool_ = false;
 		z_force_limit_reached_ = false;
-		accumulated_A1_rotation = 0.0;
+		accumulated_A1_rotation_rad = 0.0;
 		// Wait for connection from robot
 		server_.reset(new UDPServer(local_host_, local_port_));
 
@@ -130,11 +128,11 @@ namespace kuka_rsi_cartesian_hw_interface
 		{
 			joint_position_[i] = DEG2RAD * rsi_state_.positions[i];
 			joint_position_command_[i] = joint_position_[i];
-			rsi_initial_joint_positions_[i] = rsi_state_.initial_cart_position[i];
+			rsi_initial_command_[i] = rsi_state_.initial_cart_position[i];
 		}
 		ipoc_ = rsi_state_.ipoc;
-		// out_buffer_ = RSICommand('R',rsi_initial_joint_positions_, ipoc_).xml_doc;
-		out_buffer_ = RSICommand(rsi_initial_joint_positions_, ipoc_).xml_doc;
+		// out_buffer_ = RSICommand('R',rsi_initial_command_, ipoc_).xml_doc;
+		out_buffer_ = RSICommand(rsi_initial_command_, ipoc_).xml_doc;
 		ROS_INFO("SENT to robot:%s", out_buffer_.c_str());
 
 		server_->send(out_buffer_);
@@ -173,19 +171,19 @@ namespace kuka_rsi_cartesian_hw_interface
 	void KukaHardwareInterface::padCallback(const robotnik_trajectory_pad::CartesianEuler::ConstPtr &cartesian_move)
 	{
 
-		cartesian_pad_cmds_[0] = cartesian_move->x;
-		cartesian_pad_cmds_[1] = cartesian_move->y;
-		cartesian_pad_cmds_[2] = cartesian_move->z;
-		cartesian_pad_cmds_[3] = cartesian_move->pitch; // Used for joint A1 movement
-		cartesian_pad_cmds_[4] = cartesian_move->roll;	// Used for joint A6 movement
-		cartesian_pad_cmds_[5] = cartesian_move->yaw;
+		cartesian_pad_cmds_.x = cartesian_move->x;
+		cartesian_pad_cmds_.y = cartesian_move->y;
+		cartesian_pad_cmds_.z = cartesian_move->z;
+		cartesian_pad_cmds_.A1 = cartesian_move->pitch; // Used for joint A1 movement
+		cartesian_pad_cmds_.A6 = cartesian_move->roll;	// Used for joint A6 movement
+		cartesian_pad_cmds_.yaw = cartesian_move->yaw;
 
 		// TRANSFORMATION FOR TOOL ORIENTATION MOVEMENT
 		if (move_relative_to_tool_)
 		{
-			float rot_A = current_cartesian_robot_pose_.A + 90;
-			cartesian_pad_cmds_[0] = cartesian_move->x * cos(rot_A * M_PI / 180) - cartesian_move->y * sin(rot_A * M_PI / 180);
-			cartesian_pad_cmds_[1] = cartesian_move->y * cos(rot_A * M_PI / 180) + cartesian_move->x * sin(rot_A * M_PI / 180);
+			float rot_A_rad = deg2rad(current_cartesian_robot_pose_.A + 90);
+			cartesian_pad_cmds_.x = cartesian_move->x * cos(rot_A_rad) - cartesian_move->y * sin(rot_A_rad);
+			cartesian_pad_cmds_.y = cartesian_move->y * cos(rot_A_rad) + cartesian_move->x * sin(rot_A_rad);
 		}
 	}
 
@@ -247,10 +245,8 @@ namespace kuka_rsi_cartesian_hw_interface
 	{
 		out_buffer_.resize(1024);
 
-		for (std::size_t i = 0; i < n_dof_ * 2; ++i) // all increments to zero
-		{
-			rsi_joint_position_corrections_[i] = 0;
-		}
+		RSIMessageStruct RSI_message;
+
 		// Write part of the cartesian movement services, angle B and C is commented
 		if (cartesian_correction_request_ && !joint_correction_request_)
 		{
@@ -260,13 +256,13 @@ namespace kuka_rsi_cartesian_hw_interface
 			slope = 1;
 
 			distance_traveled_ = sqrt(
-				pow(((rsi_state_.cart_position[0] * cos(accumulated_A1_rotation * M_PI / 180) - rsi_state_.cart_position[1] * sin(accumulated_A1_rotation * M_PI / 180)) - start_cartesian_pose_request_[0]), 2) +
-				pow(((rsi_state_.cart_position[1] * cos(accumulated_A1_rotation * M_PI / 180) + rsi_state_.cart_position[0] * sin(accumulated_A1_rotation * M_PI / 180)) - start_cartesian_pose_request_[1]), 2) +
+				pow(((rsi_state_.cart_position[0] * cos(accumulated_A1_rotation_rad) - rsi_state_.cart_position[1] * sin(accumulated_A1_rotation_rad)) - start_cartesian_pose_request_[0]), 2) +
+				pow(((rsi_state_.cart_position[1] * cos(accumulated_A1_rotation_rad) + rsi_state_.cart_position[0] * sin(accumulated_A1_rotation_rad)) - start_cartesian_pose_request_[1]), 2) +
 				pow((rsi_state_.cart_position[2] - start_cartesian_pose_request_[2]), 2));
 
 			distance_remaining_ = sqrt(
-				pow((-(rsi_state_.cart_position[0] * cos(accumulated_A1_rotation * M_PI / 180) - rsi_state_.cart_position[1] * sin(accumulated_A1_rotation * M_PI / 180)) + cartesian_goal_pose_[0]), 2) +
-				pow((-(rsi_state_.cart_position[1] * cos(accumulated_A1_rotation * M_PI / 180) + rsi_state_.cart_position[0] * sin(accumulated_A1_rotation * M_PI / 180)) + cartesian_goal_pose_[1]), 2) +
+				pow((-(rsi_state_.cart_position[0] * cos(accumulated_A1_rotation_rad) - rsi_state_.cart_position[1] * sin(accumulated_A1_rotation_rad)) + cartesian_goal_pose_[0]), 2) +
+				pow((-(rsi_state_.cart_position[1] * cos(accumulated_A1_rotation_rad) + rsi_state_.cart_position[0] * sin(accumulated_A1_rotation_rad)) + cartesian_goal_pose_[1]), 2) +
 				pow((-rsi_state_.cart_position[2] + cartesian_goal_pose_[2]), 2));
 			// ROS_INFO(" In Service distance from start:%f distance to end: %f",distance_traveled_,distance_remaining_);
 
@@ -285,14 +281,8 @@ namespace kuka_rsi_cartesian_hw_interface
 			angle_C_error = 0; // first_angle_C_error-copysign(angle_C_moved_from_start,first_angle_C_error);
 
 			// A,B,C moves between [-179,179]
-
-			if (angle_A_error < -180)
-			{ // rsi_state_.cart_position[3]
-				angle_A_error = angle_A_error + 360;
-			}
-			else if (angle_A_error > 180)
-				angle_A_error = angle_A_error - 360;
-
+			angle_A_error = normalizeAngleDeg(angle_A_error);
+			
 			// Fase de "inicio corto": si la distancia total es muy pequeña
 			if (total_distance_to_cover_ < MIN_TOTAL_DISTANCE_THRESHOLD)
 			{
@@ -321,11 +311,11 @@ namespace kuka_rsi_cartesian_hw_interface
 				slope = 0;
 			}
 			// Aplicar la rampa a los pasos de traslación (x,y,z)			
-			rsi_joint_position_corrections_[0] = cartesian_step_[0] * slope;
-			rsi_joint_position_corrections_[1] = cartesian_step_[1] * slope;
-			rsi_joint_position_corrections_[2] = cartesian_step_[2] * slope;
+			RSI_message.x = cartesian_step_[0] * slope;
+			RSI_message.y = cartesian_step_[1] * slope;
+			RSI_message.z = cartesian_step_[2] * slope;
 
-			ROS_INFO("Steps: %f %f", rsi_joint_position_corrections_[0], rsi_joint_position_corrections_[1]);
+			ROS_INFO("Steps: %f %f", RSI_message.x, RSI_message.y);
 			
 			// --- Comprobación y ajuste del ángulo del eje A (rotación) ---
 			
@@ -364,7 +354,7 @@ namespace kuka_rsi_cartesian_hw_interface
 			}
 			// ROS_INFO("Angle A to go %f  error %f",cartesian_goal_pose_[3], angle_A_error);
 			// ROS_INFO("First error A %f reqA6 %f", initial_angle_A_error_, req_A6);
-			rsi_joint_position_corrections_[3] = joint_step_[0];
+			RSI_message.a = joint_step_[0];
 
 			// --- Rotación de los ejes B y C ---
 			// No hay rampas de aceleración/deceleración. Se mueve siempre a la mínima velocidad
@@ -378,16 +368,17 @@ namespace kuka_rsi_cartesian_hw_interface
 			{
 				joint_step_[1] = 0;
 			}
-			
+			//RSI_message.b = joint_step_[1];
 			// Rotation of C angle
 			if (fabs(angle_C_error) > 1)
 			{
-				joint_step_[1] = copysign(MIN_JOINT_STEP, angle_C_error);
+				joint_step_[2] = copysign(MIN_JOINT_STEP, angle_C_error);
 			}
 			else
 			{
-				joint_step_[1] = 0;
+				joint_step_[2] = 0;
 			}
+			//RSI_message.c = joint_step_[2];
 			// ROS_INFO("Step angle C: %f Actual pose:%f Destination:%f",joint_step_[1],rsi_state_.cart_position[5],cartesian_goal_pose_[5] );
 			
 			// --- Comprobación del estado de movimiento del robot ---
@@ -469,7 +460,7 @@ namespace kuka_rsi_cartesian_hw_interface
 			}
 			
 			// Se asigna el paso calculado al vector de correcciones para el eje A1 (índice 6)
-			rsi_joint_position_corrections_[6] = step_A1;
+			RSI_message.a1 = step_A1;
 			//----------------A6-------------------
 			// Si el error en A6 es mayor a 1 (umbral mínimo)
 			if (fabs(A6_current_error_) > MIN_ERROR_THRESHOLD_A6)
@@ -496,7 +487,7 @@ namespace kuka_rsi_cartesian_hw_interface
 			
 			//ROS_INFO("step A6 %f, error A6 %f", step_A6, A6_current_error_);
 			// Se asigna el paso calculado para A6 (índice 11) al vector de correcciones
-			rsi_joint_position_corrections_[11] = step_A6;
+			RSI_message.a6 = step_A6;
 
 			// ----- Verificación del estado de movimiento -----
 			// Check if it arrived or it stopped moving
@@ -505,7 +496,7 @@ namespace kuka_rsi_cartesian_hw_interface
 				counter_not_moving_ >= MAX_CONT_NOT_MOVING)
 			{ 	// Last loop of the service or it stopped 100 cycles of not moving interrupts the service
 				// Si los errores son muy pequeños o ha pasado mucho tiempo sin movimiento, se considera que se alcanzó el objetivo.
-				accumulated_A1_rotation += rsi_state_.positions[0] - start_joint_pose_request_[0];
+				accumulated_A1_rotation_rad += deg2rad(rsi_state_.positions[0] - start_joint_pose_request_[0]);
 				joint_correction_request_ = false;
 				robot_is_moving_msg_.data = false;
 				A6_in_valid_range = true;
@@ -526,60 +517,55 @@ namespace kuka_rsi_cartesian_hw_interface
 				prev_A6_error = A6_current_error_;
 				counter_not_moving_ = 0;
 			}
-
 			// Write part of the pad  that can move the robot in x,y,z and angle A
 		}
 		else if (!cartesian_correction_request_)
 		{
-
-			rsi_joint_position_corrections_[0] = cartesian_pad_cmds_[0] * cos(accumulated_A1_rotation * M_PI / 180) - cartesian_pad_cmds_[1] * sin(accumulated_A1_rotation * M_PI / 180);
-			rsi_joint_position_corrections_[1] = cartesian_pad_cmds_[1] * cos(accumulated_A1_rotation * M_PI / 180) + cartesian_pad_cmds_[0] * sin(accumulated_A1_rotation * M_PI / 180);
-			rsi_joint_position_corrections_[2] = cartesian_pad_cmds_[2];
+			RSI_message.x = cartesian_pad_cmds_.x * cos(accumulated_A1_rotation_rad) - cartesian_pad_cmds_.y * sin(accumulated_A1_rotation_rad);
+			RSI_message.y = cartesian_pad_cmds_.y * cos(accumulated_A1_rotation_rad) + cartesian_pad_cmds_.x * sin(accumulated_A1_rotation_rad);
+			RSI_message.z = cartesian_pad_cmds_.z;
 
 			// Limits in Z coming from the service, to block if overpressing
-			if (z_force_limit_reached_ && rsi_joint_position_corrections_[2] < 0)
+			if (z_force_limit_reached_ && RSI_message.z < 0)
 			{
-				rsi_joint_position_corrections_[2] = 0.0;
+				RSI_message.z = 0.0;
 				ROS_INFO("Blocking -Z");
 			}
-
 			//	limits of angle of the tool
-			if ((rsi_state_.positions[5] >= UP_LIMIT_A6 && cartesian_pad_cmds_[5] > 0) || 
-			(rsi_state_.positions[5] <= LOW_LIMIT_A6 && cartesian_pad_cmds_[5] < 0))
+			if ((rsi_state_.positions[5] >= UP_LIMIT_A6 && cartesian_pad_cmds_.yaw > 0) || 
+			(rsi_state_.positions[5] <= LOW_LIMIT_A6 && cartesian_pad_cmds_.yaw < 0))
 			{
-				// ROS_INFO(" PAD: %f Posicion A:%f Axis6: %f",cartesian_pad_cmds_[5],rsi_state_.cart_position[3],rsi_state_.positions[5]);
-				ROS_INFO("Limits of Angle A reached. PAD: %f Posicion A:%f Axis6: %f", cartesian_pad_cmds_[5], rsi_state_.cart_position[3], rsi_state_.positions[5]);
+				// ROS_INFO(" PAD: %f Posicion A:%f Axis6: %f",cartesian_pad_cmds_.yaw,rsi_state_.cart_position[3],rsi_state_.positions[5]);
+				ROS_INFO("Limits of Angle A reached. PAD: %f Posicion A:%f Axis6: %f", cartesian_pad_cmds_.yaw, rsi_state_.cart_position[3], rsi_state_.positions[5]);
 			}
 			else
-			{
-				// yaw
-				rsi_joint_position_corrections_[3] = cartesian_pad_cmds_[5];
+			{	// yaw
+				RSI_message.a = cartesian_pad_cmds_.yaw;
 			}
-
 			// Axis movement
 			// joint A1
-			rsi_joint_position_corrections_[6] = cartesian_pad_cmds_[3];
+			RSI_message.a1 = cartesian_pad_cmds_.A1;
 			// joint A6
-			rsi_joint_position_corrections_[11] = cartesian_pad_cmds_[4];
+			RSI_message.a6 = cartesian_pad_cmds_.A6;
 		}
 
 		// Limits of -x to avoid wall collision. Taking into account temporal correction
-		float x_disp_real = (rsi_joint_position_corrections_[0] + 
-			rsi_joint_position_corrections_[1] * sin(accumulated_A1_rotation * M_PI / 180)) / cos(accumulated_A1_rotation * M_PI / 180); // corrected x
+		float x_disp_real = (RSI_message.x + 
+			RSI_message.y * sin(accumulated_A1_rotation_rad)) / cos(accumulated_A1_rotation_rad); // corrected x
 		if (rsi_state_.cart_position[0] <= MIN_X_LIMIT && x_disp_real < 0)
 		{
-			rsi_joint_position_corrections_[0] = 0;
-			rsi_joint_position_corrections_[1] = 0;
+			RSI_message.x = 0;
+			RSI_message.y = 0;
 			ROS_INFO("-x out of range");
 		}
-		if (rsi_state_.cart_position[2] >= MAX_Z_LIMIT && rsi_joint_position_corrections_[2] > 0)
+		if (rsi_state_.cart_position[2] >= MAX_Z_LIMIT && RSI_message.z > 0)
 		{
-			rsi_joint_position_corrections_[2] = 0;
+			RSI_message.z = 0;
 			ROS_INFO("+z out of range");
 		}
 
-		// out_buffer_ = RSICommand('R',rsi_joint_position_corrections_ , ipoc_).xml_doc;
-		out_buffer_ = RSICommand(rsi_joint_position_corrections_, ipoc_).xml_doc;		
+		// out_buffer_ = RSICommand('R',RSI_message.toVector(), ipoc_).xml_doc;
+		out_buffer_ = RSICommand(RSI_message.toVector(), ipoc_).xml_doc;		
 
 		// ROS_INFO("Send to robot:%s", out_buffer_.c_str());
 		server_->send(out_buffer_);
@@ -688,16 +674,16 @@ namespace kuka_rsi_cartesian_hw_interface
 			start_cartesian_pose_request_[i] = rsi_state_.cart_position[i];
 		}
 		// Se calculan los componentes X e Y de la posición inicial
-    	// aplicando una transformación rotacional basada en accumulated_A1_rotation
-		start_cartesian_pose_request_[0] = rsi_state_.cart_position[0] * cos(accumulated_A1_rotation * M_PI / 180) - 
-										   rsi_state_.cart_position[1] * sin(accumulated_A1_rotation * M_PI / 180);
-		start_cartesian_pose_request_[1] = rsi_state_.cart_position[1] * cos(accumulated_A1_rotation * M_PI / 180) + 
-										   rsi_state_.cart_position[0] * sin(accumulated_A1_rotation * M_PI / 180);
+    	// aplicando una transformación rotacional basada en accumulated_A1_rotation_rad
+		start_cartesian_pose_request_[0] = rsi_state_.cart_position[0] * cos(accumulated_A1_rotation_rad) - 
+										   rsi_state_.cart_position[1] * sin(accumulated_A1_rotation_rad);
+		start_cartesian_pose_request_[1] = rsi_state_.cart_position[1] * cos(accumulated_A1_rotation_rad) + 
+										   rsi_state_.cart_position[0] * sin(accumulated_A1_rotation_rad);
 		// Calcula la posición meta sumando la posición inicial
 		// Se calcula la posición objetivo sumando el desplazamiento relativo (del request)
 	    // a la posición inicial. La transformación rotacional también se aplica.
-		cartesian_goal_pose_[0] = req.x * cos(accumulated_A1_rotation * M_PI / 180) - req.y * sin(accumulated_A1_rotation * M_PI / 180) + start_cartesian_pose_request_[0];
-		cartesian_goal_pose_[1] = req.y * cos(accumulated_A1_rotation * M_PI / 180) + req.x * sin(accumulated_A1_rotation * M_PI / 180) + start_cartesian_pose_request_[1];
+		cartesian_goal_pose_[0] = req.x * cos(accumulated_A1_rotation_rad) - req.y * sin(accumulated_A1_rotation_rad) + start_cartesian_pose_request_[0];
+		cartesian_goal_pose_[1] = req.y * cos(accumulated_A1_rotation_rad) + req.x * sin(accumulated_A1_rotation_rad) + start_cartesian_pose_request_[1];
 		cartesian_goal_pose_[2] = req.z + start_cartesian_pose_request_[2];
 		cartesian_goal_pose_[3] = req.A + start_cartesian_pose_request_[3];
 		cartesian_goal_pose_[4] = req.B + start_cartesian_pose_request_[4];
@@ -715,10 +701,11 @@ namespace kuka_rsi_cartesian_hw_interface
 		prev_angle_B_error = cartesian_goal_pose_[4] - start_cartesian_pose_request_[4];
 		prev_angle_C_error = cartesian_goal_pose_[5] - start_cartesian_pose_request_[5];
 		// Normalización del error del ángulo C para que esté entre -180 y 180 grados
-		if (prev_angle_C_error < -180)
+		prev_angle_C_error = normalizeAngleDeg(prev_angle_C_error);
+		/*if (prev_angle_C_error < -180)
 			prev_angle_C_error += 360;
 		else if (prev_angle_C_error > 180)
-			prev_angle_C_error -= 360;
+			prev_angle_C_error -= 360;*/
 		// Se calcula el paso absoluto en mm basado en la velocidad, el ciclo de tiempo y el factor de velocidad
 		float step_abs = ROBOT_VELOCITY * T_CYC * velocity_factor_param; // en mm
 		// Se guarda la posición inicial del eje A6 y se calcula el valor solicitado para A6
@@ -764,13 +751,13 @@ namespace kuka_rsi_cartesian_hw_interface
 			start_cartesian_pose_request_[i] = rsi_state_.cart_position[i];
 		}
 		// Transformar las componentes X e Y de la posición inicial
-		start_cartesian_pose_request_[0] = rsi_state_.cart_position[0] * cos(accumulated_A1_rotation * M_PI / 180) -
-											rsi_state_.cart_position[1] * sin(accumulated_A1_rotation * M_PI / 180);
-		start_cartesian_pose_request_[1] = rsi_state_.cart_position[1] * cos(accumulated_A1_rotation * M_PI / 180) +
-											rsi_state_.cart_position[0] * sin(accumulated_A1_rotation * M_PI / 180);
+		start_cartesian_pose_request_[0] = rsi_state_.cart_position[0] * cos(accumulated_A1_rotation_rad) -
+											rsi_state_.cart_position[1] * sin(accumulated_A1_rotation_rad);
+		start_cartesian_pose_request_[1] = rsi_state_.cart_position[1] * cos(accumulated_A1_rotation_rad) +
+											rsi_state_.cart_position[0] * sin(accumulated_A1_rotation_rad);
 		// Para modo absoluto se usa la posición proporcionada (sin sumarle la posición de inicio)
-		cartesian_goal_pose_[0] = req.x * cos(accumulated_A1_rotation * M_PI / 180) - req.y * sin(accumulated_A1_rotation * M_PI / 180);
-		cartesian_goal_pose_[1] = req.y * cos(accumulated_A1_rotation * M_PI / 180) + req.x * sin(accumulated_A1_rotation * M_PI / 180);
+		cartesian_goal_pose_[0] = req.x * cos(accumulated_A1_rotation_rad) - req.y * sin(accumulated_A1_rotation_rad);
+		cartesian_goal_pose_[1] = req.y * cos(accumulated_A1_rotation_rad) + req.x * sin(accumulated_A1_rotation_rad);
 		cartesian_goal_pose_[2] = req.z;
 		cartesian_goal_pose_[3] = req.A;
 		cartesian_goal_pose_[4] = req.B;
@@ -800,15 +787,18 @@ namespace kuka_rsi_cartesian_hw_interface
 		prev_angle_C_error = cartesian_goal_pose_[5] - start_cartesian_pose_request_[5];
 
 		// Normalización de errores angulares
-		if (prev_angle_C_error < -180)
+		prev_angle_C_error = normalizeAngleDeg(prev_angle_C_error);
+		/*if (prev_angle_C_error < -180)
 			prev_angle_C_error += 360;
 		else if (prev_angle_C_error > 180)
 			prev_angle_C_error -= 360;
-		if (prev_angle_A_error < -180)
+		*/
+		prev_angle_A_error = normalizeAngleDeg(prev_angle_A_error);
+		/*if (prev_angle_A_error < -180)
 			prev_angle_A_error += 360;
 		else if (prev_angle_A_error > 180)
 			prev_angle_A_error -= 360;
-
+		*/
 		float step_abs = ROBOT_VELOCITY * T_CYC * velocity_factor_param; // en mm
 
 		// Para algunos errores se guardan los valores iniciales
