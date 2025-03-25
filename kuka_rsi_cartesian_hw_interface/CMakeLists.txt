@@ -39,6 +39,7 @@ catkin_package(
     roscpp
     std_msgs
     robotnik_msgs	
+    message_runtime
   DEPENDS
     TinyXML
 )

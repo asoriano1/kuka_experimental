@@ -49,7 +49,8 @@ class RSICommand
 {
 public:
   RSICommand();
-  RSICommand(char type, std::vector<double> position_corrections, unsigned long long ipoc);
+  //RSICommand(char type, std::vector<double> position_corrections, unsigned long long ipoc);
+  RSICommand(std::vector<double> position_corrections, unsigned long long ipoc);
   std::string xml_doc;
 };
 
@@ -58,7 +59,8 @@ RSICommand::RSICommand()
   // Intentionally empty
 }
 
-RSICommand::RSICommand(char type, std::vector<double> position_corrections, unsigned long long ipoc)
+//RSICommand::RSICommand(char type, std::vector<double> position_corrections, unsigned long long ipoc)
+RSICommand::RSICommand(std::vector<double> position_corrections, unsigned long long ipoc)
 {
   TiXmlDocument doc;
   TiXmlElement* root = new TiXmlElement("Sen");
