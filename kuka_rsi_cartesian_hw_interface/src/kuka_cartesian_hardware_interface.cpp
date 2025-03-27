@@ -83,11 +83,11 @@ namespace kuka_rsi_cartesian_hw_interface
 		pad_sub_ = nh_.subscribe<robotnik_trajectory_pad::CartesianEuler>("/kuka_pad/cartesian_move", 1, &KukaHardwareInterface::padCallback, this);
 		phidget_sub_ = nh_.subscribe<std_msgs::Float64>("/phidget_load/load_mean", 1, &KukaHardwareInterface::phidgetCallback, this);
 		// service
-		set_kuka_odometry_abs_ = nh_.advertiseService("setKukaAbs", &KukaHardwareInterface::setAbsoluteCartGoalPose, this);
-		set_kuka_odometry_rel_ = nh_.advertiseService("setKukaRel", &KukaHardwareInterface::setRelativeCartGoalPose, this);
-		set_kuka_odometry_abs_fast_ = nh_.advertiseService("setKukaAbsFast", &KukaHardwareInterface::setAbsoluteCartGoalPoseFast, this);
-		set_kuka_odometry_rel_fast_ = nh_.advertiseService("setKukaRelFast", &KukaHardwareInterface::setRelativeCartGoalPoseFast, this);
-		set_kuka_A1_A6_ = nh_.advertiseService("setKukaA1A6", &KukaHardwareInterface::moveJointsA1andA6, this);
+		set_kuka_absolute_goal_pose_ = nh_.advertiseService("setKukaAbs", &KukaHardwareInterface::setAbsoluteCartGoalPose, this);
+		set_kuka_relative_goal_pose_ = nh_.advertiseService("setKukaRel", &KukaHardwareInterface::setRelativeCartGoalPose, this);
+		set_kuka_absolute_goal_pose_fast_ = nh_.advertiseService("setKukaAbsFast", &KukaHardwareInterface::setAbsoluteCartGoalPoseFast, this);
+		set_kuka_relative_goal_pose_fast_ = nh_.advertiseService("setKukaRelFast", &KukaHardwareInterface::setRelativeCartGoalPoseFast, this);
+		set_kuka_joints_A1_and_A6_ = nh_.advertiseService("setKukaA1A6", &KukaHardwareInterface::moveJointsA1andA6, this);
 		set_moveRelTool_ = nh_.advertiseService("setMoveRelTool", &KukaHardwareInterface::setMoveRelTool, this);
 
 		initial_angle_A_error_ = 0;

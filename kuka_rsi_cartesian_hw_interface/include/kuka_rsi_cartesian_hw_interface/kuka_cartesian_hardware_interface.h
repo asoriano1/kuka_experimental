@@ -238,11 +238,11 @@ private:
   void padCallback(const robotnik_trajectory_pad::CartesianEuler::ConstPtr& c);
   void phidgetCallback(const std_msgs::Float64::ConstPtr& c);
   
-  ros::ServiceServer set_kuka_odometry_abs_;
-  ros::ServiceServer set_kuka_odometry_rel_;
-  ros::ServiceServer set_kuka_odometry_abs_fast_;
-  ros::ServiceServer set_kuka_odometry_rel_fast_;
-  ros::ServiceServer set_kuka_A1_A6_;
+  ros::ServiceServer set_kuka_absolute_goal_pose_;
+  ros::ServiceServer set_kuka_relative_goal_pose_;
+  ros::ServiceServer set_kuka_absolute_goal_pose_fast_;
+  ros::ServiceServer set_kuka_relative_goal_pose_fast_;
+  ros::ServiceServer set_kuka_joints_A1_and_A6_;
   ros::ServiceServer set_moveRelTool_;
 
   //Publishers of robot state and ROS msgs
