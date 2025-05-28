@@ -182,8 +182,8 @@ namespace kuka_rsi_cartesian_hw_interface
 		if (move_relative_to_tool_)
 		{
 			float rot_A_rad = deg2rad(current_cartesian_robot_pose_.A + 90);
-			cartesian_pad_cmds_.x = cartesian_move->x * cos(rot_A_rad) - cartesian_move->y * sin(rot_A_rad);
-			cartesian_pad_cmds_.y = cartesian_move->y * cos(rot_A_rad) + cartesian_move->x * sin(rot_A_rad);
+			cartesian_pad_cmds_.x = -(cartesian_move->x * cos(rot_A_rad) - cartesian_move->y * sin(rot_A_rad));
+			cartesian_pad_cmds_.y = -(cartesian_move->y * cos(rot_A_rad) + cartesian_move->x * sin(rot_A_rad));
 		}
 	}
 
@@ -592,13 +592,13 @@ namespace kuka_rsi_cartesian_hw_interface
 	bool KukaHardwareInterface::setRelativeCartGoalPose(robotnik_msgs::set_CartesianEuler_pose::Request &req,
 		robotnik_msgs::set_CartesianEuler_pose::Response &res)
 	{
-	return settingRelativeCartGoalPose(req, res, JOINT_MOVE_VELOCITY_FACTOR);
+	return settingRelativeCartGoalPose(req, res, CARTESIAN_MOVE_VELOCITY_FACTOR);
 	}
 
 	bool KukaHardwareInterface::setRelativeCartGoalPoseFast(robotnik_msgs::set_CartesianEuler_pose::Request &req,
 				robotnik_msgs::set_CartesianEuler_pose::Response &res)
 	{
-	return settingRelativeCartGoalPose(req, res, JOINT_MOVE_FAST_VELOCITY_FACTOR);
+	return settingRelativeCartGoalPose(req, res, CARTESIAN_MOVE_FAST_VELOCITY_FACTOR);
 	}
 
 
